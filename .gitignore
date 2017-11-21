@@ -1,1 +1,3 @@
 target/
+data/mnist
+data/mnist.t
