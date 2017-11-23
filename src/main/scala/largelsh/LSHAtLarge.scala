@@ -46,12 +46,16 @@ object LSHAtLarge {
         val random = new Random(seed)
         val hashFunctions = Array.fill(k)(LSHAtLarge.getHashFunction(random, trainingNumFeats, W))
 
-        val exampleToBucketRDD = training.map(v => {
+        val exampleToBucketRDD = training.zipWithIndex.map{ case (v, i) => {
             val hashes = hashFunctions.map(f => f(v.features.toArray))
             val ksi = hashes.zipWithIndex.map{
-                case (i, v) => (i+1) * v
+                case (j, v) => (j + 1) * v
             }.sum
-            (v.label, ksi)
-        })
+            (i, (v.label, ksi))
+        }}
+
+        val bucketToExamplesRDD = exampleToBucketRDD.map{
+            case (id, t) => (t._2, List((t._1, id)))
+        }.reduceByKey(_ ++ _)
     }
 }
