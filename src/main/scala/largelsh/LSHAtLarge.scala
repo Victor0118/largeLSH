@@ -48,14 +48,14 @@ object LSHAtLarge {
 
         val exampleToBucketRDD = training.zipWithIndex.map{ case (v, i) => {
             val hashes = hashFunctions.map(f => f(v.features.toArray))
-            val ksi = hashes.zipWithIndex.map{
-                case (j, v) => (j + 1) * v
-            }.sum
+            val ksi = hashes.sum
             (i, (v.label, ksi))
         }}
 
         val bucketToExamplesRDD = exampleToBucketRDD.map{
             case (id, t) => (t._2, List((t._1, id)))
         }.reduceByKey(_ ++ _)
+
+        bucketToExamplesRDD.saveAsTextFile("output")
     }
 }
