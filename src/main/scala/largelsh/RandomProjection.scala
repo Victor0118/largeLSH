@@ -1,8 +1,7 @@
 package largelsh
 
 import scala.math._
-import scala.collection.mutable.ListBuffer
-import scala.collection.mutable.PriorityQueue
+import scala.collection.mutable.{HashMap,ListBuffer}
 import scala.util.Random
 
 import org.apache.spark.SparkContext
@@ -15,15 +14,13 @@ import org.rogach.scallop._
 
 class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
   val seed = opt[Int](default = Some(1234), descr = "Random seed")
-  val k = opt[Int](default = Some(20), descr = "Number of hash functions in each set")
-  val m = opt[Int](default = Some(10), descr = "Number of sets of hash functions")
+  val k = opt[Int](default = Some(5), descr = "Number of hash functions in each set")
+  val m = opt[Int](default = Some(5), descr = "Number of sets of hash functions")
   verify()
 }
 
 object RandomProjection {
-  def getPredictions(buckets: scala.collection.Map[(Seq[Int],Int),ListBuffer[Double]], hashFunctions: Seq[Array[(Array[Double]) => Int]], dataset: RDD[LabeledPoint], k: Int = 5) = {
-    val addToSet = (s: ListBuffer[Double], v: Double) => s += v
-    val mergePartitionSets = (s1: ListBuffer[Double], s2: ListBuffer[Double]) => s1 ++= s2
+  def getPredictions(buckets: scala.collection.Map[(Seq[Int],Int),HashMap[Double,Int]], hashFunctionSets: Seq[Array[(Array[Double]) => Int]], dataset: RDD[LabeledPoint], k: Int = 5) = {
     dataset.map(p => {
       val featuresArray = p.features.toArray
       val signatures = hashFunctionSets.map(hashFunctions => {
@@ -32,11 +29,10 @@ object RandomProjection {
 
       val labelsInBucket = signatures
         .zipWithIndex
-        .map(k => buckets.getOrElse(k, ListBuffer.empty[Double]))
-        .reduce((lb1, lb2) => lb1 ++= lb2)
+        .map(k => buckets.getOrElse(k, HashMap.empty[Double,Int]))
+        .reduce(Utils.mergeHashMapCounters)
 
-      val labelsInBucketList = labelsInBucket.toList
-      val mostCommonLabel = if (!labelsInBucketList.isEmpty) labelsInBucketList.groupBy(identity).mapValues(_.size).maxBy(_._2)._1 else -1
+      val mostCommonLabel = if (!labelsInBucket.isEmpty) labelsInBucket.maxBy(_._2)._1 else -1
       (p.label, mostCommonLabel)
     })
   }
@@ -77,8 +73,6 @@ object RandomProjection {
     })
 
     // Generate signatures for training set
-    val addToSet = (s: ListBuffer[Double], v: Double) => s += v
-    val mergePartitionSets = (s1: ListBuffer[Double], s2: ListBuffer[Double]) => s1 ++= s2
     val buckets = training.flatMap(p => {
       val featuresArray = p.features.toArray
       val setSignatures = hashFunctionSets.map(hashFunctions => {
@@ -87,7 +81,7 @@ object RandomProjection {
       val emitKVPs = setSignatures.zipWithIndex.map(k => (k, p.label))
       // Emit [((signature of bucket, bucket id), label)]
       emitKVPs
-    }).aggregateByKey(ListBuffer.empty[Double])(addToSet, mergePartitionSets)
+    }).aggregateByKey(HashMap.empty[Double,Int])(Utils.addToHashMapCounter, Utils.mergeHashMapCounters)
     .collectAsMap
 
     val trainPredictions = getPredictions(buckets, hashFunctionSets, training)
