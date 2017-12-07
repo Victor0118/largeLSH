@@ -20,7 +20,7 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
   verify()
 }
 
-object LSHAtLarge {
+object RandomProjection {
   def getPredictions(buckets: scala.collection.Map[(Seq[Int],Int),ListBuffer[Double]], hashFunctions: Seq[Array[(Array[Double]) => Int]], dataset: RDD[LabeledPoint], k: Int = 5) = {
     val addToSet = (s: ListBuffer[Double], v: Double) => s += v
     val mergePartitionSets = (s1: ListBuffer[Double], s2: ListBuffer[Double]) => s1 ++= s2
