@@ -87,7 +87,11 @@ object RandomProjection {
     val trainPredictions = getPredictions(buckets, hashFunctionSets, training)
     val testPredictions = getPredictions(buckets, hashFunctionSets, testing)
 
-    println(s"Training accuracy: ${getAccuracy(trainPredictions)}")
-    println(s"Test accuracy: ${getAccuracy(testPredictions)}")
+    val trainAccuracy = getAccuracy(trainPredictions)
+    val testAccuracy = getAccuracy(testPredictions)
+    sc.stop()
+
+    println(s"Training accuracy: ${trainAccuracy}")
+    println(s"Test accuracy: ${testAccuracy}")
   }
 }
