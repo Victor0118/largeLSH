@@ -17,6 +17,7 @@ lazy val root = (project in file(".")).
       scalaTest % Test,
       "org.apache.spark" %% "spark-core" % sparkVersion,
       "org.apache.spark" %% "spark-sql" % sparkVersion,
-      "org.apache.spark" %% "spark-mllib" % sparkVersion
+      "org.apache.spark" %% "spark-mllib" % sparkVersion,
+      "org.rogach" %% "scallop" % "3.1.1"
     )
   )
