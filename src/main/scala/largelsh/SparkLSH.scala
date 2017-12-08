@@ -13,14 +13,6 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 object LSH_kNN {
 
-  def time[R](block: => R): R = {
-    val t0 = System.nanoTime()
-    val result = block    // call-by-name
-    val t1 = System.nanoTime()
-    println("Elapsed time: " + (t1 - t0) / 1000000.0 + "ms")
-    result
-  }
-
   def main(args: Array[String]) {
     val sparkConf = new SparkConf().setAppName("LSH at Large").setMaster("local")
     val sc = new SparkContext(sparkConf)
@@ -53,8 +45,14 @@ object LSH_kNN {
 
     val df_sample = testing_df_ml.sample(false, 1)
 
-    val threshold = 2000
+    /**
+      * threshold: max l2 distance to filter before sorting
+      * bl: BucketLength, W in LSH at large paper
+      * nht: number of HashTables
+      * k: number of nearest neighbor in k-NN
+      */
 
+    val threshold = 2000
     val bl = 2.0
     val nht = 2
     val k = 5
@@ -63,14 +61,14 @@ object LSH_kNN {
     var transformedA = model.transform(training_df_ml)
     for (bl <- List(2.0, 5.0, 8.0)) {
       for (nht <- List(3, 5, 7)) {
-        time {
+        Utils.time {
           println("==========transform training data==========")
           brp = new BucketedRandomProjectionLSH().setBucketLength(bl).setNumHashTables(nht).setInputCol("features").setOutputCol("hashes")
           model = brp.fit(training_df_ml)
           transformedA = model.transform(training_df_ml)
         }
         for (k <- List(1, 5, 9)) {
-          time {
+          Utils.time {
             println("==========run kNN on testing data==========")
             // Compute the locality sensitive hashes for the input rows, then perform approximate similarity join.
             val results = model.approxSimilarityJoin(transformedA, df_sample, threshold, "EuclideanDistance")
