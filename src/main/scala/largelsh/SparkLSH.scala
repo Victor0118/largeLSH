@@ -14,11 +14,11 @@ import org.apache.spark.{SparkConf, SparkContext}
 object LSH_kNN {
 
   def main(args: Array[String]) {
-    val sparkConf = new SparkConf().setAppName("LSH at Large").setMaster("local")
+    val sparkConf = new SparkConf().setAppName("LargeLSH").setMaster("local")
     val sc = new SparkContext(sparkConf)
     sparkConf.set("spark.driver.allowMultipleContexts", "true")
 
-    val spark: SparkSession = SparkSession.builder().appName("LSH at Large").config("spark.master", "local").getOrCreate()
+    val spark: SparkSession = SparkSession.builder().appName("LargeLSH").config("spark.master", "local").getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
     import spark.implicits._
 
