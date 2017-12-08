@@ -11,13 +11,16 @@ lazy val root = (project in file(".")).
     )),
     name := "Hello",
     resolvers ++= Seq(
-      "apache-snapshots" at "http://repository.apache.org/snapshots/"
+      "apache-snapshots" at "http://repository.apache.org/snapshots/",
+      "Spark Packages Repo" at "http://dl.bintray.com/spark-packages/maven",
+      "Repo at github.com/ankurdave/maven-repo" at "https://github.com/ankurdave/maven-repo/raw/master"
     ),
     libraryDependencies ++= Seq(
       scalaTest % Test,
       "org.apache.spark" %% "spark-core" % sparkVersion,
       "org.apache.spark" %% "spark-sql" % sparkVersion,
       "org.apache.spark" %% "spark-mllib" % sparkVersion,
-      "org.rogach" %% "scallop" % "3.1.1"
+      "org.rogach" %% "scallop" % "3.1.1",
+      "amplab" % "spark-indexedrdd" % "0.4.0"
     )
   )

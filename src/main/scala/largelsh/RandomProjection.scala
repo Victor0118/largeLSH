@@ -20,7 +20,7 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
 }
 
 object RandomProjection {
-  def getPredictions(buckets: scala.collection.Map[(Seq[Int],Int),HashMap[Double,Int]], hashFunctionSets: Seq[Array[(Array[Double]) => Int]], dataset: RDD[LabeledPoint], k: Int = 5) = {
+  def getPredictions(buckets: scala.collection.Map[(Seq[Int],Int),HashMap[Double,Int]], hashFunctionSets: Seq[Array[(Array[Double]) => Int]], dataset: RDD[LabeledPoint]) = {
     dataset.map(p => {
       val featuresArray = p.features.toArray
       val signatures = hashFunctionSets.map(hashFunctions => {
