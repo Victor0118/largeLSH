@@ -12,14 +12,7 @@ import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.rdd.RDD
 import org.rogach.scallop._
 
-class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
-  val seed = opt[Int](default = Some(1234), descr = "Random seed")
-  val k = opt[Int](default = Some(5), descr = "Number of hash functions in each set")
-  val m = opt[Int](default = Some(5), descr = "Number of sets of hash functions")
-  verify()
-}
-
-object RandomProjection {
+object RandomProjectionWithDirection {
   def getPredictions(buckets: scala.collection.Map[(Seq[Int],Int),HashMap[Double,Int]], hashFunctionSets: Seq[Array[(Array[Double]) => Int]], dataset: RDD[LabeledPoint], k: Int = 5) = {
     dataset.map(p => {
       val featuresArray = p.features.toArray
@@ -51,7 +44,7 @@ object RandomProjection {
     val k = conf.k()
     val m = conf.m()
     println(s"Using seed: $seed, k: $k, m: $m")
-    val sparkConf = new SparkConf().setAppName("LSH using Random Projection").setMaster("local")
+    val sparkConf = new SparkConf().setAppName("LSH using Random Projection with Direction").setMaster("local")
     val sc = new SparkContext(sparkConf)
 
     val training: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist")

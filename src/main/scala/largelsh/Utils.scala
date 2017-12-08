@@ -5,6 +5,8 @@ import scala.collection.mutable.{HashMap,ListBuffer}
 import scala.util.Random
 
 import org.apache.spark.mllib.linalg.{SparseVector,Vectors}
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.rdd.RDD
 
 object Utils {
   def getRandomProjectionHashFunction(random: Random, dim: Int) : (Array[Double]) => Int = {
@@ -18,6 +20,25 @@ object Utils {
     }
 
     hashFunction
+  }
+
+  def pad(dataset: RDD[LabeledPoint], dim: Int) = {
+    val result = dataset.map(p => {
+      val sparseVec = p.features.toSparse
+      val features = new SparseVector(dim, sparseVec.indices, sparseVec.values)
+      new LabeledPoint(p.label, features)
+    })
+    result
+  }
+
+  def generateHashFunctionSets(m: Int, k: Int, hashFunctionDim: Int, seed: Int) = {
+    // Generate hash functions for each set
+    val hashFunctionSets = (1 to m).map(setNum => {
+      val random = new Random(seed + setNum)
+      val hashFunctions = Array.fill(k)(getRandomProjectionHashFunction(random, hashFunctionDim))
+      hashFunctions
+    })
+    hashFunctionSets
   }
 
   def l2DistanceSquared(p1: SparseVector, p2: SparseVector) : Double = {
