@@ -9,6 +9,15 @@ import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
 
 object Utils {
+
+  def time[R](block: => R): R = {
+    val t0 = System.nanoTime()
+    val result = block    // call-by-name
+    val t1 = System.nanoTime()
+    println("Elapsed time: " + (t1 - t0) / 1000000.0 + "ms")
+    result
+  }
+  
   def getRandomProjectionHashFunction(random: Random, dim: Int) : (Array[Double]) => Int = {
     val a = Array.fill(dim)(random.nextGaussian)
     val length = sqrt(a.map(e => e*e).sum)
