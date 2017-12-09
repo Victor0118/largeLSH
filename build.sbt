@@ -21,6 +21,8 @@ lazy val root = (project in file(".")).
       "org.apache.spark" %% "spark-sql" % sparkVersion % "provided",
       "org.apache.spark" %% "spark-mllib" % sparkVersion % "provided",
       "org.rogach" %% "scallop" % "3.1.1",
+      "org.scalanlp" %% "breeze" % "0.13.2",
+      "org.scalanlp" %% "breeze-natives" % "0.13.2",
       "amplab" % "spark-indexedrdd" % "0.4.0"
     )
   )

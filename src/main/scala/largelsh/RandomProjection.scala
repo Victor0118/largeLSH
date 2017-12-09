@@ -4,6 +4,7 @@ import scala.math._
 import scala.collection.mutable.{HashMap,ListBuffer}
 import scala.util.Random
 
+import breeze.linalg.StorageVector
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.mllib.linalg.{SparseVector,Vectors}
 import org.apache.spark.mllib.regression.LabeledPoint
@@ -20,9 +21,9 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
 }
 
 object RandomProjection {
-  def getPredictions(buckets: scala.collection.Map[(Seq[Int],Int),HashMap[Double,Int]], hashFunctionSets: Seq[Array[(Array[Double]) => Int]], dataset: RDD[LabeledPoint]) = {
+  def getPredictions(buckets: scala.collection.Map[(Seq[Int],Int),HashMap[Double,Int]], hashFunctionSets: Seq[Array[(breeze.linalg.Vector[Double]) => Int]], dataset: RDD[LabeledPoint]) = {
     dataset.map(p => {
-      val featuresArray = p.features.toArray
+      val featuresArray = Utils.toBreeze(p.features)
       val signatures = hashFunctionSets.map(hashFunctions => {
         hashFunctions.map(f => f(featuresArray)).toSeq
       })
@@ -80,7 +81,7 @@ object RandomProjection {
 
     // Generate signatures for training set
     val buckets = training.flatMap(p => {
-      val featuresArray = p.features.toArray
+      val featuresArray =  Utils.toBreeze(p.features)
       val setSignatures = hashFunctionSets.map(hashFunctions => {
         hashFunctions.map(f => f(featuresArray)).toSeq
       })

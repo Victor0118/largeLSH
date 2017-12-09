@@ -14,9 +14,9 @@ import org.apache.spark.rdd.RDD
 import org.rogach.scallop._
 
 object RandomProjectionWithDirection {
-  def getPredictions(buckets: scala.collection.Map[(Seq[Int],Int),ListBuffer[(Double,Long)]], indexToFeatureVec: scala.collection.Map[Long,Vector], hashFunctionSets: Seq[Array[(Array[Double]) => Int]], dataset: RDD[LabeledPoint], numNearestNeighbour: Int = 5) = {
+  def getPredictions(buckets: scala.collection.Map[(Seq[Int],Int),ListBuffer[(Double,Long)]], indexToFeatureVec: scala.collection.Map[Long,Vector], hashFunctionSets: Seq[Array[(breeze.linalg.Vector[Double]) => Int]], dataset: RDD[LabeledPoint], numNearestNeighbour: Int = 5) = {
     dataset.zipWithIndex.map{ case (p, j) => {
-      val featuresArray = p.features.toArray
+      val featuresArray = Utils.toBreeze(p.features)
       val signatures = hashFunctionSets.map(hashFunctions => {
         hashFunctions.map(f => f(featuresArray)).toSeq
       })
@@ -97,7 +97,7 @@ object RandomProjectionWithDirection {
     val mergePartitionSets = (s1: ListBuffer[(Double,Long)], s2: ListBuffer[(Double,Long)]) => s1 ++= s2
     val buckets = training.zipWithIndex.flatMap {
       case (p, i) => {
-        val featuresArray = p.features.toArray
+        val featuresArray = Utils.toBreeze(p.features)
         val setSignatures = hashFunctionSets.map(hashFunctions => {
           hashFunctions.map(f => f(featuresArray)).toSeq
         })
