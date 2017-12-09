@@ -4,7 +4,7 @@ import scala.math._
 import scala.collection.mutable.{HashMap,ListBuffer}
 import scala.util.Random
 
-import org.apache.spark.mllib.linalg.{SparseVector,Vectors}
+import org.apache.spark.mllib.linalg.{SparseVector,Vector}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
 
@@ -17,7 +17,7 @@ object Utils {
     println("Elapsed time: " + (t1 - t0) / 1000000.0 + "ms")
     result
   }
-  
+
   def getRandomProjectionHashFunction(random: Random, dim: Int) : (Array[Double]) => Int = {
     val a = Array.fill(dim)(random.nextGaussian)
     val length = sqrt(a.map(e => e*e).sum)
@@ -48,11 +48,6 @@ object Utils {
       hashFunctions
     })
     hashFunctionSets
-  }
-
-  def l2DistanceSquared(p1: SparseVector, p2: SparseVector) : Double = {
-    val sharedIndices = p1.indices intersect p2.indices
-    sharedIndices.map(i => pow(p1(i) - p2(i), 2)).sum
   }
 
   def addToHashMapCounter(m: HashMap[Double,Int], v: Double) = {

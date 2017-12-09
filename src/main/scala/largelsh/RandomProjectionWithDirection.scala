@@ -8,15 +8,15 @@ import edu.berkeley.cs.amplab.spark.indexedrdd.IndexedRDD
 import edu.berkeley.cs.amplab.spark.indexedrdd.IndexedRDD._
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkConf
-import org.apache.spark.mllib.linalg.{SparseVector,Vectors}
+import org.apache.spark.mllib.linalg.{SparseVector,Vector,Vectors}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.rdd.RDD
 import org.rogach.scallop._
 
 object RandomProjectionWithDirection {
-  def getPredictions(buckets: scala.collection.Map[(Seq[Int],Int),ListBuffer[(Double,Long)]], indexToFeatureVec: scala.collection.Map[Long,SparseVector], hashFunctionSets: Seq[Array[(Array[Double]) => Int]], dataset: RDD[LabeledPoint], numNearestNeighbour: Int = 5) = {
-    dataset.map(p => {
+  def getPredictions(buckets: scala.collection.Map[(Seq[Int],Int),ListBuffer[(Double,Long)]], indexToFeatureVec: scala.collection.Map[Long,Vector], hashFunctionSets: Seq[Array[(Array[Double]) => Int]], dataset: RDD[LabeledPoint], numNearestNeighbour: Int = 5) = {
+    dataset.zipWithIndex.map{ case (p, j) => {
       val featuresArray = p.features.toArray
       val signatures = hashFunctionSets.map(hashFunctions => {
         hashFunctions.map(f => f(featuresArray)).toSeq
@@ -31,7 +31,7 @@ object RandomProjectionWithDirection {
       var heap = PriorityQueue()(Ordering.by[(Double,Double),Double](_._2).reverse)
       labelsInBucket.foreach {
         case (label, i) => {
-          val distTup = (label, Utils.l2DistanceSquared(indexToFeatureVec.get(i).get, p.features.toSparse))
+          val distTup = (label, Vectors.sqdist(indexToFeatureVec.get(i).get, p.features))
           heap += distTup
         }
       }
@@ -45,7 +45,7 @@ object RandomProjectionWithDirection {
       }
       val mostCommonLabel = if (!labelsInBucket.isEmpty) kClosest.toList.groupBy(identity).mapValues(_.size).maxBy(_._2)._1 else -1
       (p.label, mostCommonLabel)
-    })
+    }}
   }
 
   def getAccuracy(predictions: RDD[(Double, Double)]) = {
@@ -77,7 +77,7 @@ object RandomProjectionWithDirection {
 
     // Build mapping from index to feature vector
     val indexToFeatureVec = training.zipWithIndex.map {
-      case (e, i) => (i, e.features.toSparse)
+      case (e, i) => (i, e.features)
     }.collectAsMap
 
     // Generate signatures for training set
