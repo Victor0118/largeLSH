@@ -16,6 +16,7 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
   val seed = opt[Int](default = Some(1234), descr = "Random seed")
   val k = opt[Int](default = Some(5), descr = "Number of hash functions in each set")
   val m = opt[Int](default = Some(5), descr = "Number of sets of hash functions")
+  val sample = opt[Int](default = None, descr = "Run on sample")
   verify()
 }
 
@@ -77,7 +78,7 @@ object RandomProjection {
     .collectAsMap
 
     val trainPredictions = getPredictions(buckets, hashFunctionSets, training)
-    val testPredictions = getPredictions(buckets, hashFunctionSets, testing)
+    val testPredictions = getPredictions(buckets, hashFunctionSets, testingPadded)
 
     val trainAccuracy = getAccuracy(trainPredictions)
     val testAccuracy = getAccuracy(testPredictions)

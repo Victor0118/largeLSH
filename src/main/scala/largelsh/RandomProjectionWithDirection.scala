@@ -65,9 +65,14 @@ object RandomProjectionWithDirection {
     val sparkConf = new SparkConf().setAppName("LSH using Random Projection with Direction").setMaster("local")
     val sc = new SparkContext(sparkConf)
 
-    val training: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist")
+    var training: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist")
+    var testing: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist.t")
+    if (conf.sample.isDefined) {
+      training = sc.parallelize(training.take(conf.sample.get.get))
+      testing = sc.parallelize(testing.take(conf.sample.get.get))
+    }
     val trainingNumFeats = training.take(1)(0).features.size
-    val testing: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist.t")
+    println("Number of training features", trainingNumFeats)
 
     // Pad testing examples to make even with training examples
     val testingPadded = Utils.pad(testing, trainingNumFeats)
@@ -97,7 +102,7 @@ object RandomProjectionWithDirection {
     .collectAsMap
 
     val trainPredictions = getPredictions(buckets, indexToFeatureVec, hashFunctionSets, training)
-    val testPredictions = getPredictions(buckets, indexToFeatureVec, hashFunctionSets, testing)
+    val testPredictions = getPredictions(buckets, indexToFeatureVec, hashFunctionSets, testingPadded)
 
     val trainAccuracy = getAccuracy(trainPredictions)
     val testAccuracy = getAccuracy(testPredictions)
