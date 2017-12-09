@@ -9,7 +9,7 @@ lazy val root = (project in file(".")).
       scalaVersion := "2.11.12",
       version      := "0.1.0-SNAPSHOT"
     )),
-    name := "Hello",
+    name := "LargeLSH",
     resolvers ++= Seq(
       "apache-snapshots" at "http://repository.apache.org/snapshots/",
       "Spark Packages Repo" at "http://dl.bintray.com/spark-packages/maven",
@@ -17,9 +17,9 @@ lazy val root = (project in file(".")).
     ),
     libraryDependencies ++= Seq(
       scalaTest % Test,
-      "org.apache.spark" %% "spark-core" % sparkVersion,
-      "org.apache.spark" %% "spark-sql" % sparkVersion,
-      "org.apache.spark" %% "spark-mllib" % sparkVersion,
+      "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
+      "org.apache.spark" %% "spark-sql" % sparkVersion % "provided",
+      "org.apache.spark" %% "spark-mllib" % sparkVersion % "provided",
       "org.rogach" %% "scallop" % "3.1.1",
       "amplab" % "spark-indexedrdd" % "0.4.0"
     )

@@ -4,8 +4,7 @@ import scala.math._
 import scala.collection.mutable.{HashMap,ListBuffer}
 import scala.util.Random
 
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkConf
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.mllib.linalg.{SparseVector,Vectors}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.util.MLUtils
@@ -51,13 +50,27 @@ object RandomProjection {
     val seed  = conf.seed()
     val k = conf.k()
     val m = conf.m()
+    val sample = conf.sample()
     println(s"Using seed: $seed, k: $k, m: $m")
-    val sparkConf = new SparkConf().setAppName("LSH using Random Projection").setMaster("local")
-    val sc = new SparkContext(sparkConf)
 
-    val training: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist")
+    val spark = SparkSession
+      .builder()
+      .appName("LSH using Random Projection")
+      .config("spark.master", "local")
+      .getOrCreate()
+
+    import spark.implicits._
+
+    val sc = spark.sparkContext
+
+    var training: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist")
+    var testing: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist.t")
+    if (conf.sample.isDefined) {
+      training = sc.parallelize(training.take(sample))
+      testing = sc.parallelize(testing.take(sample))
+    }
     val trainingNumFeats = training.take(1)(0).features.size
-    val testing: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist.t")
+    println("Number of training features", trainingNumFeats)
 
     // Pad testing examples to make even with training examples
     val testingPadded = Utils.pad(testing, trainingNumFeats)
