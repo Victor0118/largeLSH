@@ -4,8 +4,8 @@ import scala.math._
 import scala.collection.mutable.{HashMap,ListBuffer}
 import scala.util.Random
 
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkConf
+import breeze.linalg.StorageVector
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.mllib.linalg.{SparseVector,Vectors}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.util.MLUtils
@@ -16,13 +16,14 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
   val seed = opt[Int](default = Some(1234), descr = "Random seed")
   val k = opt[Int](default = Some(5), descr = "Number of hash functions in each set")
   val m = opt[Int](default = Some(5), descr = "Number of sets of hash functions")
+  val sample = opt[Int](default = None, descr = "Run on sample")
   verify()
 }
 
 object RandomProjection {
-  def getPredictions(buckets: scala.collection.Map[(Seq[Int],Int),HashMap[Double,Int]], hashFunctionSets: Seq[Array[(Array[Double]) => Int]], dataset: RDD[LabeledPoint], k: Int = 5) = {
+  def getPredictions(buckets: scala.collection.Map[(Seq[Int],Int),HashMap[Double,Int]], hashFunctionSets: Seq[Array[(breeze.linalg.Vector[Double]) => Int]], dataset: RDD[LabeledPoint]) = {
     dataset.map(p => {
-      val featuresArray = p.features.toArray
+      val featuresArray = Utils.toBreeze(p.features)
       val signatures = hashFunctionSets.map(hashFunctions => {
         hashFunctions.map(f => f(featuresArray)).toSeq
       })
@@ -51,30 +52,34 @@ object RandomProjection {
     val k = conf.k()
     val m = conf.m()
     println(s"Using seed: $seed, k: $k, m: $m")
-    val sparkConf = new SparkConf().setAppName("LSH using Random Projection").setMaster("local")
-    val sc = new SparkContext(sparkConf)
 
-    val training: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist")
+    val spark = SparkSession
+      .builder()
+      .appName("LSH using Random Projection")
+      .getOrCreate()
+
+    import spark.implicits._
+
+    val sc = spark.sparkContext
+
+    var training: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist")
+    var testing: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist.t")
+    if (conf.sample.isDefined) {
+      training = sc.parallelize(training.take(conf.sample.get.get))
+      testing = sc.parallelize(testing.take(conf.sample.get.get))
+    }
     val trainingNumFeats = training.take(1)(0).features.size
-    val testing: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist.t")
+    println("Number of training features", trainingNumFeats)
 
     // Pad testing examples to make even with training examples
-    val testingPadded = testing.map(p => {
-      val sparseVec = p.features.toSparse
-      val features = new SparseVector(trainingNumFeats, sparseVec.indices, sparseVec.values)
-      new LabeledPoint(p.label, features)
-    })
+    val testingPadded = Utils.pad(testing, trainingNumFeats)
 
     // Generate hash functions for each set
-    val hashFunctionSets = (1 to m).map(setNum => {
-      val random = new Random(seed + setNum)
-      val hashFunctions = Array.fill(k)(Utils.getRandomProjectionHashFunction(random, trainingNumFeats))
-      hashFunctions
-    })
+    val hashFunctionSets = Utils.generateHashFunctionSets(m, k, trainingNumFeats, seed)
 
     // Generate signatures for training set
     val buckets = training.flatMap(p => {
-      val featuresArray = p.features.toArray
+      val featuresArray =  Utils.toBreeze(p.features)
       val setSignatures = hashFunctionSets.map(hashFunctions => {
         hashFunctions.map(f => f(featuresArray)).toSeq
       })
@@ -85,7 +90,7 @@ object RandomProjection {
     .collectAsMap
 
     val trainPredictions = getPredictions(buckets, hashFunctionSets, training)
-    val testPredictions = getPredictions(buckets, hashFunctionSets, testing)
+    val testPredictions = getPredictions(buckets, hashFunctionSets, testingPadded)
 
     val trainAccuracy = getAccuracy(trainPredictions)
     val testAccuracy = getAccuracy(testPredictions)
