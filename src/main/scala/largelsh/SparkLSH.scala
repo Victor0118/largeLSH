@@ -22,14 +22,22 @@ object LSH_kNN {
     spark.sparkContext.setLogLevel("ERROR")
     import spark.implicits._
 
-    // load mnist dataset using mllib library
-    val training: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist")
-    val trainingNumFeats = training.take(1)(0).features.size
+    val dataSet = "svhn"
 
+
+    // load mnist dataset using mllib library
+    var training: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist")
+    var testing: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist.t")
+    if (dataSet == "svhn") {
+      training = MLUtils.loadLibSVMFile(sc, "data/SVHN.bz2")
+      testing = MLUtils.loadLibSVMFile(sc, "data/SVHN.t.bz2")
+    }
+
+
+    val trainingNumFeats = training.take(1)(0).features.size
     // change RDD type with mllib Vector to DataFrame type with ml Vector
     val training_df = training.toDF()
     val training_df_ml = MLUtils.convertVectorColumnsToML(training_df)
-    val testing: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist.t")
     val testingNumFeats = testing.take(1)(0).features.size
 
     val testing_padded = testing.map(p => {
@@ -43,6 +51,8 @@ object LSH_kNN {
     training_df_ml.select("features").show()
     testing_df_ml.select("features").show()
 
+    val sift_json = spark.read.json("data/sift/base.json")
+
     val df_sample = testing_df_ml.sample(false, 1)
 
     /**
@@ -52,7 +62,7 @@ object LSH_kNN {
       * k: number of nearest neighbor in k-NN
       */
 
-    val threshold = 2000
+    val threshold = trainingNumFeats * 2.5
     val bl = 2.0
     val nht = 2
     val k = 5
