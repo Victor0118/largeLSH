@@ -13,22 +13,21 @@ import org.apache.spark.sql.functions.{row_number, _}
 object SparkLSH {
 
   def main(args: Array[String]) {
+    val conf = new Conf(args)
     val spark: SparkSession = SparkSession.builder().appName("LargeLSH").getOrCreate()
     val sc = spark.sparkContext
     spark.sparkContext.setLogLevel("ERROR")
     import spark.implicits._
 
-    val dataSet = "svhn"
-
-
-    // load mnist dataset using mllib library
-    var training: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist")
-    var testing: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist.t")
-    if (dataSet == "svhn") {
-      training = MLUtils.loadLibSVMFile(sc, "data/SVHN.bz2")
-      testing = MLUtils.loadLibSVMFile(sc, "data/SVHN.t.bz2")
+    val training = conf.dataset() match {
+      case "mnist" => MLUtils.loadLibSVMFile(sc, "data/mnist")
+      case "svhn" => MLUtils.loadLibSVMFile(sc, "data/SVHN")
     }
 
+    val testing = conf.dataset() match {
+      case "mnist" => MLUtils.loadLibSVMFile(sc, "data/mnist.t")
+      case "svhn" => MLUtils.loadLibSVMFile(sc, "data/SVHN.t")
+    }
 
     val trainingNumFeats = training.take(1)(0).features.size
     // change RDD type with mllib Vector to DataFrame type with ml Vector

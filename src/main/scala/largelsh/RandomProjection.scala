@@ -17,6 +17,7 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
   val k = opt[Int](default = Some(5), descr = "Number of hash functions in each set")
   val m = opt[Int](default = Some(5), descr = "Number of sets of hash functions")
   val sample = opt[Int](default = None, descr = "Run on sample")
+  val dataset = opt[String](default = Some("mnist"))
   verify()
 }
 
