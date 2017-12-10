@@ -70,7 +70,6 @@ object PairwiseNaive {
     val spark = SparkSession
       .builder()
       .appName("Naive All Pairs Implementation")
-      .config("spark.master", "local")
       .getOrCreate()
 
     import spark.implicits._

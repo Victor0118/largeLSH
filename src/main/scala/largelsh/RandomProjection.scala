@@ -56,7 +56,6 @@ object RandomProjection {
     val spark = SparkSession
       .builder()
       .appName("LSH using Random Projection")
-      .config("spark.master", "local")
       .getOrCreate()
 
     import spark.implicits._
