@@ -25,9 +25,7 @@ object Utils {
   }
 
   def getRandomProjectionHashFunction(random: Random, dim: Int) : (breeze.linalg.Vector[Double]) => Int = {
-    val a = new breeze.linalg.DenseVector[Double](Array.fill(dim)(random.nextGaussian))
-    val length = sqrt(a.map(e => e*e).sum)
-    val normalized = a.map(e => e / length)
+    val a = breeze.linalg.DenseVector.fill(dim){random.nextGaussian}
 
     def hashFunction(v: breeze.linalg.Vector[Double]): Int =  {
       val dotProduct = a dot v

@@ -13,7 +13,7 @@ import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.rdd.RDD
 import org.rogach.scallop._
 
-object RandomProjectionWithDirection {
+object RandomProjectionWithDistance {
   def getPredictions(buckets: scala.collection.Map[(Seq[Int],Int),ListBuffer[(Double,Long)]], indexToFeatureVec: scala.collection.Map[Long,Vector], hashFunctionSets: Seq[Array[(breeze.linalg.Vector[Double]) => Int]], dataset: RDD[LabeledPoint], numNearestNeighbour: Int = 5) = {
     dataset.zipWithIndex.map{ case (p, j) => {
       val featuresArray = Utils.toBreeze(p.features)
