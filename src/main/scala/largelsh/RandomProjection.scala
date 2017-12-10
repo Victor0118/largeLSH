@@ -51,7 +51,6 @@ object RandomProjection {
     val seed  = conf.seed()
     val k = conf.k()
     val m = conf.m()
-    val sample = conf.sample()
     println(s"Using seed: $seed, k: $k, m: $m")
 
     val spark = SparkSession
@@ -67,8 +66,8 @@ object RandomProjection {
     var training: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist")
     var testing: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist.t")
     if (conf.sample.isDefined) {
-      training = sc.parallelize(training.take(sample))
-      testing = sc.parallelize(testing.take(sample))
+      training = sc.parallelize(training.take(conf.sample.get.get))
+      testing = sc.parallelize(testing.take(conf.sample.get.get))
     }
     val trainingNumFeats = training.take(1)(0).features.size
     println("Number of training features", trainingNumFeats)

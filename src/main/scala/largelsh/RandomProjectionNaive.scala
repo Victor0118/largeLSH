@@ -13,7 +13,7 @@ import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.rdd.RDD
 import org.rogach.scallop._
 
-object RandomProjectionWithDirection {
+object RandomProjectionNaive {
   def getPredictions(buckets: scala.collection.Map[(Seq[Int],Int),ListBuffer[(Double,Long)]], indexToFeatureVec: scala.collection.Map[Long,Vector], hashFunctionSets: Seq[Array[(breeze.linalg.Vector[Double]) => Int]], dataset: RDD[LabeledPoint], numNearestNeighbour: Int = 5) = {
     dataset.zipWithIndex.map{ case (p, j) => {
       val featuresArray = Utils.toBreeze(p.features)
@@ -83,29 +83,21 @@ object RandomProjectionWithDirection {
     // Pad testing examples to make even with training examples
     val testingPadded = Utils.pad(testing, trainingNumFeats)
 
-    // Generate hash functions for each set
-    val hashFunctionSets = Utils.generateHashFunctionSets(m, k, trainingNumFeats, seed)
-
     // Build mapping from index to feature vector
     val indexToFeatureVec = training.zipWithIndex.map {
       case (e, i) => (i, e.features)
     }.collectAsMap
 
-    // Generate signatures for training set
-    val addToSet = (s: ListBuffer[(Double,Long)], v: (Double,Long)) => s += v
-    val mergePartitionSets = (s1: ListBuffer[(Double,Long)], s2: ListBuffer[(Double,Long)]) => s1 ++= s2
+    // Compute distance between all pairs
+    val addToSet = (s: ListBuffer[Long], v: Long) => s += v
+    val mergePartitionSets = (s1: ListBuffer[Long], s2: ListBuffer[Long]) => s1 ++= s2
+    val totalTrainingExamples = training.count
     val buckets = training.zipWithIndex.flatMap {
       case (p, i) => {
-        val featuresArray = Utils.toBreeze(p.features)
-        val setSignatures = hashFunctionSets.map(hashFunctions => {
-          hashFunctions.map(f => f(featuresArray)).toSeq
-        })
-        val emitKVPs = setSignatures.zipWithIndex.map(k => (k, (p.label, i)))
-        // Emit [((signature of bucket, bucket id), (label, exampleIdx))]
-        emitKVPs
+        val pairs = for (j <- 0 until totalTrainingExamples if j != i) yield (i, j)
       }
-    }.aggregateByKey(ListBuffer.empty[(Double, Long)])(addToSet, mergePartitionSets)
-    .collectAsMap
+    }.aggregateByKey(ListBuffer.empty[Long])(addToSet, mergePartitionSets)
+    .map
 
     val trainPredictions = getPredictions(buckets, indexToFeatureVec, hashFunctionSets, training)
     val testPredictions = getPredictions(buckets, indexToFeatureVec, hashFunctionSets, testingPadded)
