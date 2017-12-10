@@ -8,17 +8,13 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{row_number, _}
-import org.apache.spark.{SparkConf, SparkContext}
 
 
-object LSH_kNN {
+object SparkLSH {
 
   def main(args: Array[String]) {
-    val sparkConf = new SparkConf().setAppName("LargeLSH").setMaster("local")
-    val sc = new SparkContext(sparkConf)
-    sparkConf.set("spark.driver.allowMultipleContexts", "true")
-
-    val spark: SparkSession = SparkSession.builder().appName("LargeLSH").config("spark.master", "local").getOrCreate()
+    val spark: SparkSession = SparkSession.builder().appName("LargeLSH").getOrCreate()
+    val sc = spark.sparkContext
     spark.sparkContext.setLogLevel("ERROR")
     import spark.implicits._
 
