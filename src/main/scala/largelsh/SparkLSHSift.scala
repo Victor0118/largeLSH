@@ -1,18 +1,12 @@
 package largelsh
 
 import org.apache.spark.ml.feature.BucketedRandomProjectionLSH
-import org.apache.spark.mllib.linalg.SparseVector
-import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.mllib.util.MLUtils
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{row_number, _}
-import org.apache.spark.sql.types.{DoubleType, StructType}
 import org.rogach.scallop._
-import org.apache.spark.sql.types._
 
-class SparkLSHConf(arguments: Seq[String]) extends ScallopConf(arguments) {
+class SparkLSHSiftConf(arguments: Seq[String]) extends ScallopConf(arguments) {
   val bl = opt[Double](default = Some(2.0), descr = "Bucket length")
   val nht = opt[Int](default = Some(3), descr = "Number of hash tables")
   val k = opt[Int](default = Some(1), descr = "Number of nearest neighbor in k-NN")
@@ -23,46 +17,11 @@ class SparkLSHConf(arguments: Seq[String]) extends ScallopConf(arguments) {
 }
 
 
-object SparkLSH {
+object SparkLSHSift {
 
   def main(args: Array[String]) {
     val conf = new SparkLSHConf(args)
     val spark: SparkSession = SparkSession.builder().appName("LargeLSH").getOrCreate()
-    val sc = spark.sparkContext
-    spark.sparkContext.setLogLevel("ERROR")
-    import spark.implicits._
-
-    var training = conf.dataset() match {
-      case "mnist" => MLUtils.loadLibSVMFile(sc, "data/mnist")
-      case "svhn" => MLUtils.loadLibSVMFile(sc, "data/SVHN")
-    }
-
-    var testing = conf.dataset() match {
-      case "mnist" => MLUtils.loadLibSVMFile(sc, "data/mnist.t")
-      case "svhn" => MLUtils.loadLibSVMFile(sc, "data/SVHN.t")
-    }
-
-    if (conf.sample.isDefined) {
-      training = sc.parallelize(training.take(conf.sample.get.get))
-      testing = sc.parallelize(testing.take(conf.sample.get.get))
-    }
-
-    val trainingNumFeats = training.take(1)(0).features.size
-    // change RDD type with mllib Vector to DataFrame type with ml Vector
-    val training_df = training.toDF()
-    val training_df_ml = MLUtils.convertVectorColumnsToML(training_df)
-    val testingNumFeats = testing.take(1)(0).features.size
-
-    val testing_padded = testing.map(p => {
-      val sparseVec = p.features.toSparse
-      val features = new SparseVector(trainingNumFeats, sparseVec.indices, sparseVec.values)
-      new LabeledPoint(p.label, features)
-    })
-
-    val testing_df = testing_padded.toDF()
-    val testing_df_ml = MLUtils.convertVectorColumnsToML(testing_df)
-    training_df_ml.select("features").show()
-    testing_df_ml.select("features").show()
 
     val sift_json = spark.read.option("header", "true").json("data/sift/base.json")
     var df = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/query.csv")
@@ -72,7 +31,7 @@ object SparkLSH {
     df = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/groundtruth.csv")
     val groundtruth = df.withColumn("features", struct(df.columns.head, df.columns.tail: _*)).select("features")
 
-    val df_sample = testing_df_ml.sample(false, 1)
+    val trainingNumFeats = query.take(1)(0).features.size
 
     /**
       * threshold: max l2 distance to filter before sorting
@@ -86,10 +45,10 @@ object SparkLSH {
     val nht = conf.nht()
     val k = conf.k()
     var brp = new BucketedRandomProjectionLSH()
-                   .setBucketLength(bl)
-                   .setNumHashTables(nht)
-                   .setInputCol("features")
-                   .setOutputCol("hashes")
+      .setBucketLength(bl)
+      .setNumHashTables(nht)
+      .setInputCol("features")
+      .setOutputCol("hashes")
 
     var model = brp.fit(training_df_ml)
     var transformedA = model.transform(training_df_ml)
