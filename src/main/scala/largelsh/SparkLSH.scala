@@ -13,19 +13,26 @@ import org.apache.spark.sql.functions.{row_number, _}
 object SparkLSH {
 
   def main(args: Array[String]) {
+    val conf = new Conf(args)
     val spark: SparkSession = SparkSession.builder().appName("LargeLSH").getOrCreate()
     val sc = spark.sparkContext
     spark.sparkContext.setLogLevel("ERROR")
     import spark.implicits._
 
-    // load mnist dataset using mllib library
-    val training: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist")
-    val trainingNumFeats = training.take(1)(0).features.size
+    val training = conf.dataset() match {
+      case "mnist" => MLUtils.loadLibSVMFile(sc, "data/mnist")
+      case "svhn" => MLUtils.loadLibSVMFile(sc, "data/SVHN")
+    }
 
+    val testing = conf.dataset() match {
+      case "mnist" => MLUtils.loadLibSVMFile(sc, "data/mnist.t")
+      case "svhn" => MLUtils.loadLibSVMFile(sc, "data/SVHN.t")
+    }
+
+    val trainingNumFeats = training.take(1)(0).features.size
     // change RDD type with mllib Vector to DataFrame type with ml Vector
     val training_df = training.toDF()
     val training_df_ml = MLUtils.convertVectorColumnsToML(training_df)
-    val testing: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist.t")
     val testingNumFeats = testing.take(1)(0).features.size
 
     val testing_padded = testing.map(p => {
@@ -48,7 +55,7 @@ object SparkLSH {
       * k: number of nearest neighbor in k-NN
       */
 
-    val threshold = 2000
+    val threshold = trainingNumFeats * 2.5
     val bl = 2.0
     val nht = 2
     val k = 5
