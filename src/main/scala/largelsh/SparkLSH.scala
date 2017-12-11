@@ -8,25 +8,41 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{row_number, _}
+import org.rogach.scallop._
+
+class SparkLSHConf(arguments: Seq[String]) extends ScallopConf(arguments) {
+  val bl = opt[Double](default = Some(2.0), descr = "Bucket length")
+  val nht = opt[Int](default = Some(3), descr = "Number of hash tables")
+  val k = opt[Int](default = Some(1), descr = "Number of nearest neighbor in k-NN")
+  val sample = opt[Int](default = None, descr = "Run on sample")
+  val dataset = opt[String](default = Some("mnist"), descr = "Dataset to run on, mnist or svhn")
+  val mode = opt[String](default = Some("eval"), descr = "Use eval to run on parameters provided, search to search over space of parameters")
+  verify()
+}
 
 
 object SparkLSH {
 
   def main(args: Array[String]) {
-    val conf = new Conf(args)
+    val conf = new SparkLSHConf(args)
     val spark: SparkSession = SparkSession.builder().appName("LargeLSH").getOrCreate()
     val sc = spark.sparkContext
     spark.sparkContext.setLogLevel("ERROR")
     import spark.implicits._
 
-    val training = conf.dataset() match {
+    var training = conf.dataset() match {
       case "mnist" => MLUtils.loadLibSVMFile(sc, "data/mnist")
       case "svhn" => MLUtils.loadLibSVMFile(sc, "data/SVHN")
     }
 
-    val testing = conf.dataset() match {
+    var testing = conf.dataset() match {
       case "mnist" => MLUtils.loadLibSVMFile(sc, "data/mnist.t")
       case "svhn" => MLUtils.loadLibSVMFile(sc, "data/SVHN.t")
+    }
+
+    if (conf.sample.isDefined) {
+      training = sc.parallelize(training.take(conf.sample.get.get))
+      testing = sc.parallelize(testing.take(conf.sample.get.get))
     }
 
     val trainingNumFeats = training.take(1)(0).features.size
@@ -56,21 +72,32 @@ object SparkLSH {
       */
 
     val threshold = trainingNumFeats * 2.5
-    val bl = 2.0
-    val nht = 2
-    val k = 5
-    var brp = new BucketedRandomProjectionLSH().setBucketLength(bl).setNumHashTables(nht).setInputCol("features").setOutputCol("hashes")
+    val bl = conf.bl()
+    val nht = conf.nht()
+    val k = conf.k()
+    var brp = new BucketedRandomProjectionLSH()
+                   .setBucketLength(bl)
+                   .setNumHashTables(nht)
+                   .setInputCol("features")
+                   .setOutputCol("hashes")
+
     var model = brp.fit(training_df_ml)
     var transformedA = model.transform(training_df_ml)
-    for (bl <- List(2.0, 5.0, 8.0)) {
-      for (nht <- List(3, 5, 7)) {
+
+    val searchMode = conf.mode() == "search"
+    val blSpace = if (searchMode) Seq(2.0, 5.0, 8.0) else Seq(conf.bl())
+    val nhtSpace = if (searchMode) Seq(3, 5, 7) else Seq(conf.nht())
+    val kSpace = if (searchMode) Seq(1, 5, 9) else Seq(conf.k())
+
+    for (bl <- blSpace) {
+      for (nht <- nhtSpace) {
         Utils.time {
           println("==========transform training data==========")
           brp = new BucketedRandomProjectionLSH().setBucketLength(bl).setNumHashTables(nht).setInputCol("features").setOutputCol("hashes")
           model = brp.fit(training_df_ml)
           transformedA = model.transform(training_df_ml)
         }
-        for (k <- List(1, 5, 9)) {
+        for (k <- kSpace) {
           Utils.time {
             println("==========run kNN on testing data==========")
             // Compute the locality sensitive hashes for the input rows, then perform approximate similarity join.
