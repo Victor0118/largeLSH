@@ -3,3 +3,12 @@
 target/
 data/mnist
 data/mnist.t
+
+*.aux
+*.ent
+*.log
+*.synctex.gz
+*.bbl
+*.blg
+paper/largelsh.pdf
+
