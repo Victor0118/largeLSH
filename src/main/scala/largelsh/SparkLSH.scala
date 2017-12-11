@@ -4,13 +4,10 @@ import org.apache.spark.ml.feature.BucketedRandomProjectionLSH
 import org.apache.spark.mllib.linalg.SparseVector
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.util.MLUtils
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{row_number, _}
-import org.apache.spark.sql.types.{DoubleType, StructType}
 import org.rogach.scallop._
-import org.apache.spark.sql.types._
 
 class SparkLSHConf(arguments: Seq[String]) extends ScallopConf(arguments) {
   val bl = opt[Double](default = Some(2.0), descr = "Bucket length")
@@ -63,14 +60,6 @@ object SparkLSH {
     val testing_df_ml = MLUtils.convertVectorColumnsToML(testing_df)
     training_df_ml.select("features").show()
     testing_df_ml.select("features").show()
-
-    val sift_json = spark.read.option("header", "true").json("data/sift/base.json")
-    var df = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/query.csv")
-    val query = df.withColumn("features", struct(df.columns.head, df.columns.tail: _*)).select("features")
-    df = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/base.csv")
-    val base = df.withColumn("features", struct(df.columns.head, df.columns.tail: _*)).select("features")
-    df = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/groundtruth.csv")
-    val groundtruth = df.withColumn("features", struct(df.columns.head, df.columns.tail: _*)).select("features")
 
     val df_sample = testing_df_ml.sample(false, 1)
 

@@ -22,6 +22,29 @@
 % This version uses the latex2e styles, not the very ancient 2.09 stuff.
 \documentclass[letterpaper,twocolumn,10pt]{article}
 \usepackage{usenix,epsfig,endnotes}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{mathtools}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{listings}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{amsthm}
+
+\newcommand{\floor}[1]{\lfloor #1 \rfloor}
+\DeclareMathOperator{\sign}{sign}
+\makeatletter
+\def\BState{\State\hskip-\ALG@thistlm}
+\makeatother
+
+\newtheorem{theorem}{Theorem}[section]
+
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+
 \begin{document}
 
 %don't want date printed
@@ -56,10 +79,16 @@ Whet our appetites.
 
 \section{Introduction}
 
-A paragraph of text goes here.  Lots of text.  Plenty of interesting
-text. \\
 
-More fascinating text. Features\endnote{Remember to use endnotes, not footnotes!} galore, plethora of promises.\\
+
+
+\begin{definition}[Nearest Neighbor Search]
+	Given a  point set $P \in \mathbb{R}^{n \cdot d}$, for any query $q$, return the $p \in P$ minimizing $\| p-q \|$, i.e. we wish to find the point closest to $q$ by some metric.
+\end{definition}
+
+\begin{definition}[$k$-Nearest Neighbor Search]
+	Given parameter $k$ and a point set $P \in \mathbb{R}^{n \cdot d}$, for any query $q$, if any such exist, return the  $p \in P$ s.t. $\| p-q \| \leq r$, i.e. we wish to find the closest k points.
+\end{definition}
 
 \section{Background and Related Work}
 
@@ -153,7 +182,105 @@ This concludes the definitions tag.
 
 \section{Design}
 
-\section{Evaluation}
+\subsection{Locality Sensitive Hashing}
+Locality-sensitive hashing (abbreviated LSH) is a method often used for answering approximate nearest neighbour queries in high-dimensional data sets. According to varity of the hash function design, LSH has many implementation. One of the most popular approach is random project(RP). The main idea of RP is .... \cite{wang2014hashing}  
+\subsubsection{Random Projection into  Euclidean Space}
+p-Stable Distribution Scheme \cite{datar2004locality}
+
+two vectors which are close have a small difference between
+norms, and should collide
+
+dot product is instead used to assign a hash value to v. First, we projects to a value on the real line. Next, we split line into equal-width segments of size r for buckets.
+
+\begin{align*}
+h_{a,b}(v) = \floor{\frac{(a\cdot v + b)}{w} }
+\end{align*}
+
+\subsubsection{Random Projection into Hamming  Space}
+
+\begin{align*}
+h_{a_1, a_2, ..., a_K}(v) = [\sign{(a_1\cdot v )}, \sign{(a_1\cdot v )}, ..., \sign{(a_K\cdot v )}]
+\end{align*}
+
+\subsection{K-Nearest Neighbor for Classification}
+The psudocode of applying distributed KNN algorithm to classification tasks can be viewed in \ref{classification}.
+\begin{algorithm}[H]
+	\caption{Distributed Approximate k-Nearest Neighbor Search for Classification}
+	\label{classification}
+	\begin{algorithmic}[1]
+		\Procedure{MyProcedure}{}
+		\State $\textit{stringlen} \gets \text{length of }\textit{string}$
+		\State $i \gets \textit{patlen}$
+		\BState \emph{top}:
+		\If {$i > \textit{stringlen}$} \Return false
+		\EndIf
+		\State $j \gets \textit{patlen}$
+		\BState \emph{loop}:
+		\If {$\textit{string}(i) = \textit{path}(j)$}
+		\State $j \gets j-1$.
+		\State $i \gets i-1$.
+		\State \textbf{goto} \emph{loop}.
+		\State \textbf{close};
+		\EndIf
+		\State $i \gets i+\max(\textit{delta}_1(\textit{string}(i)),\textit{delta}_2(j))$.
+		\State \textbf{goto} \emph{top}.
+		\EndProcedure
+	\end{algorithmic}
+\end{algorithm}
+
+\subsection{Distributed KNN through Spark}
+
+The psudocode of our distributed KNN algorithm implementation can be viewed in \ref{knn}.
+\begin{algorithm}[H]
+	\caption{Distributed LSH-based Approximate k-Nearest Neighbor Search Algorithm}
+	\label{knn}
+	\begin{algorithmic}[1]
+		\Procedure{MyProcedure}{}
+		\State $\textit{stringlen} \gets \text{length of }\textit{string}$
+		\State $i \gets \textit{patlen}$
+		\BState \emph{top}:
+		\If {$i > \textit{stringlen}$} \Return false
+		\EndIf
+		\State $j \gets \textit{patlen}$
+		\BState \emph{loop}:
+		\If {$\textit{string}(i) = \textit{path}(j)$}
+		\State $j \gets j-1$.
+		\State $i \gets i-1$.
+		\State \textbf{goto} \emph{loop}.
+		\State \textbf{close};
+		\EndIf
+		\State $i \gets i+\max(\textit{delta}_1(\textit{string}(i)),\textit{delta}_2(j))$.
+		\State \textbf{goto} \emph{top}.
+		\EndProcedure
+	\end{algorithmic}
+\end{algorithm}
+
+
+
+\section{Experimental Setup}
+
+\subsection{Data}
+\subsubsection{MNIST}
+The MNIST database\footnote{\url{http://yann.lecun.com/exdb/mnist/}} of handwritten digits, available from this page, has a training set of 60,000 examples, and a test set of 10,000 examples. It is a subset of a larger set available from NIST. 
+
+\subsubsection{SVHN}
+SVHN\footnote{\url{http://ufldl.stanford.edu/housenumbers/}} is a real-world image dataset for developing machine learning and object recognition algorithms with minimal requirement on data preprocessing and formatting. It can be seen as similar in flavor to MNIST (e.g., the images are of small cropped digits), but incorporates an order of magnitude more labeled data (over 600,000 digit images) and comes from a significantly harder, unsolved, real world problem (recognizing digits and numbers in natural scene images). 
+
+\subsubsection{SIFT}
+\cite{jegou2011product}
+
+\subsection{Task}
+\subsubsection{Nearest Neighbor Search}
+\subsubsection{Image Classification}
+
+\subsection{Parameters}
+\subsubsection{Hardware Configuration}
+We use ..
+
+\subsubsection{Parameters for LSH}
+\subsubsection{Parameters for ANN-based Classification}
+
+\section{Results}
 
 \section{Summary}
 

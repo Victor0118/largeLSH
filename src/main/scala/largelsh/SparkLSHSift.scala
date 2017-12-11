@@ -4,7 +4,9 @@ import org.apache.spark.ml.feature.BucketedRandomProjectionLSH
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{row_number, _}
+import org.apache.spark.ml.feature.VectorAssembler
 import org.rogach.scallop._
+import org.apache.spark.sql.functions._
 
 class SparkLSHSiftConf(arguments: Seq[String]) extends ScallopConf(arguments) {
   val bl = opt[Double](default = Some(2.0), descr = "Bucket length")
@@ -23,15 +25,17 @@ object SparkLSHSift {
     val conf = new SparkLSHConf(args)
     val spark: SparkSession = SparkSession.builder().appName("LargeLSH").getOrCreate()
 
-    val sift_json = spark.read.option("header", "true").json("data/sift/base.json")
-    var df = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/query.csv")
-    val query = df.withColumn("features", struct(df.columns.head, df.columns.tail: _*)).select("features")
-    df = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/base.csv")
-    val base = df.withColumn("features", struct(df.columns.head, df.columns.tail: _*)).select("features")
-    df = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/groundtruth.csv")
-    val groundtruth = df.withColumn("features", struct(df.columns.head, df.columns.tail: _*)).select("features")
 
-    val trainingNumFeats = query.take(1)(0).features.size
+    var df = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/query.csv")
+    val assembler = new VectorAssembler().setInputCols(df.columns).setOutputCol("features")
+    val query = assembler.transform(df).select("features")
+    df = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/base.csv")
+    val base = assembler.transform(df).select("features")
+    val groundtruth = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/groundtruth.csv")
+//    val groundtruth = df.withColumn("features", struct(df.columns.head, df.columns.tail: _*)).select("features")
+
+    val df_sample_tmp = query.sample(false, 0.01)
+    val df_sample = df_sample_tmp.withColumn("UniqueID", monotonically_increasing_id)
 
     /**
       * threshold: max l2 distance to filter before sorting
@@ -39,19 +43,14 @@ object SparkLSHSift {
       * nht: number of HashTables
       * k: number of nearest neighbor in k-NN
       */
-
+    val trainingNumFeats = 128
     val threshold = trainingNumFeats * 2.5
     val bl = conf.bl()
     val nht = conf.nht()
     val k = conf.k()
-    var brp = new BucketedRandomProjectionLSH()
-      .setBucketLength(bl)
-      .setNumHashTables(nht)
-      .setInputCol("features")
-      .setOutputCol("hashes")
-
-    var model = brp.fit(training_df_ml)
-    var transformedA = model.transform(training_df_ml)
+    var brp = new BucketedRandomProjectionLSH().setBucketLength(2).setNumHashTables(2).setInputCol("features").setOutputCol("hashes")
+    var model = brp.fit(base)
+    var transformedA = model.transform(base)
 
     val searchMode = conf.mode() == "search"
     val blSpace = if (searchMode) Seq(2.0, 5.0, 8.0) else Seq(conf.bl())
@@ -63,8 +62,8 @@ object SparkLSHSift {
         Utils.time {
           println("==========transform training data==========")
           brp = new BucketedRandomProjectionLSH().setBucketLength(bl).setNumHashTables(nht).setInputCol("features").setOutputCol("hashes")
-          model = brp.fit(training_df_ml)
-          transformedA = model.transform(training_df_ml)
+          model = brp.fit(base)
+          transformedA = model.transform(base)
         }
         for (k <- kSpace) {
           Utils.time {
@@ -73,11 +72,12 @@ object SparkLSHSift {
             val results = model.approxSimilarityJoin(transformedA, df_sample, threshold, "EuclideanDistance")
 
             results.createOrReplaceTempView("results")
-            val sqlDF = spark.sql("SELECT datasetA.label as label_train, datasetB.label as label_test, datasetB.features, EuclideanDistance FROM results ")
+            val sqlDF = spark.sql("SELECT datasetA.label as label_train, datasetB.label as label_test, datasetB as features, EuclideanDistance FROM results ")
 
             // choose the majority from first k candidates
             val w = Window.partitionBy($"features").orderBy($"EuclideanDistance".asc)
             val dfTopk = sqlDF.withColumn("rn", row_number.over(w)).where($"rn" <= k).drop("rn")
+
 
             val finalDF = dfTopk.map(t => {
               val acc = if (t.getAs(0) == t.getAs(1)) 1 else 0
