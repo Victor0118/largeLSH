@@ -46,8 +46,6 @@ object SparkLSH {
     training_df_ml.select("features").show()
     testing_df_ml.select("features").show()
 
-    val sift_json = spark.read.json("data/sift/base.json")
-
     val df_sample = testing_df_ml.sample(false, 1)
 
     /**
