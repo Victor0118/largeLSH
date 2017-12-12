@@ -10,5 +10,7 @@ data/mnist.t
 *.synctex.gz
 *.bbl
 *.blg
+*.fdb_latexmk
+*.fls
 paper/largelsh.pdf
-
+paper/largelsh.dvi
