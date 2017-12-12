@@ -17,7 +17,7 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
   val k = opt[Int](default = Some(5), descr = "Number of hash functions in each set")
   val m = opt[Int](default = Some(5), descr = "Number of sets of hash functions")
   val sample = opt[Int](default = None, descr = "Run on sample")
-  val dataset = opt[String](default = Some("mnist"))
+  val dataset = opt[String](default = Some("mnist"), descr = "mnist or svhn")
   verify()
 }
 
@@ -63,12 +63,7 @@ object RandomProjection {
 
     val sc = spark.sparkContext
 
-    var training: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist")
-    var testing: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist.t")
-    if (conf.sample.isDefined) {
-      training = sc.parallelize(training.take(conf.sample.get.get))
-      testing = sc.parallelize(testing.take(conf.sample.get.get))
-    }
+    val (training, testing) = DataLoader.getDatasets(conf.dataset(), conf.sample.toOption, sc)
     val trainingNumFeats = training.take(1)(0).features.size
     println("Number of training features", trainingNumFeats)
 

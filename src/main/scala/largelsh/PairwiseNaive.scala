@@ -76,12 +76,8 @@ object PairwiseNaive {
 
     val sc = spark.sparkContext
 
-    var training: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist")
-    var testing: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, "data/mnist.t")
-    if (conf.sample.isDefined) {
-      training = sc.parallelize(training.take(conf.sample.get.get))
-      testing = sc.parallelize(testing.take(conf.sample.get.get))
-    }
+    val (training, testing) = DataLoader.getDatasets(conf.dataset(), conf.sample.toOption, sc)
+
     val trainingNumFeats = training.take(1)(0).features.size
     println("Number of training features", trainingNumFeats)
 
