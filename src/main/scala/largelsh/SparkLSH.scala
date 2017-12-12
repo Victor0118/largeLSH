@@ -29,20 +29,7 @@ object SparkLSH {
     spark.sparkContext.setLogLevel("ERROR")
     import spark.implicits._
 
-    var training = conf.dataset() match {
-      case "mnist" => MLUtils.loadLibSVMFile(sc, "data/mnist")
-      case "svhn" => MLUtils.loadLibSVMFile(sc, "data/SVHN")
-    }
-
-    var testing = conf.dataset() match {
-      case "mnist" => MLUtils.loadLibSVMFile(sc, "data/mnist.t")
-      case "svhn" => MLUtils.loadLibSVMFile(sc, "data/SVHN.t")
-    }
-
-    if (conf.sample.isDefined) {
-      training = sc.parallelize(training.take(conf.sample.get.get))
-      testing = sc.parallelize(testing.take(conf.sample.get.get))
-    }
+    val (training, testing) = DataLoader.getDatasets(conf.dataset(), conf.sample.toOption, sc)
 
     val trainingNumFeats = training.take(1)(0).features.size
     // change RDD type with mllib Vector to DataFrame type with ml Vector
