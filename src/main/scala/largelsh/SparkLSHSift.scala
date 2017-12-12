@@ -40,20 +40,16 @@ object SparkLSHSift {
 //    val groundtruth = assembler.transform(df).select("features")
     val groundtruth = df.withColumn("features", array(df.columns.head, df.columns.tail: _*)).select("features")
 
-    val df_sample = query.sample(false, 0.01)
+    //    monotonically_increasing_id is not stable
+    //    val df_sample_id = df_sample.withColumn("UniqueID", monotonically_increasing_id)
+    //    val base_id = base.withColumn("UniqueID", monotonically_increasing_id)
 
-//    monotonically_increasing_id is not stable
-//    val df_sample_id = df_sample.withColumn("UniqueID", monotonically_increasing_id)
-//    val base_id = base.withColumn("UniqueID", monotonically_increasing_id)
-
-    df_sample.createOrReplaceTempView("df_sample")
-    val df_sample_id = spark.sql("select row_number() over (order by features) as id,features from df_sample")
-    base.createOrReplaceTempView("base")
-    val base_id = spark.sql("select row_number() over (order by features) as id,features from base")
-    groundtruth.createOrReplaceTempView("groundtruth")
-    val groundtruth_id = spark.sql("select row_number() over (order by features) as id,features from groundtruth")
-    val vectorHead = udf{ x:DenseVector => x(0) }
-    groundtruth_id.withColumn("gt_array", vectorHead(df("features")))
+    val query_id = query.withColumn("id", row_number.over(Window.partitionBy(lit(1)).orderBy(lit(1))))
+    val df_sample_id = query_id.sample(false, 1)
+    val base_id = base.withColumn("id", row_number.over(Window.partitionBy(lit(1)).orderBy(lit(1))))
+    val groundtruth_id = groundtruth.withColumn("id", row_number.over(Window.partitionBy(lit(1)).orderBy(lit(1))))
+//    val vectorHead = udf{ x:DenseVector => x(0) }
+//    groundtruth_id.withColumn("gt_array", vectorHead(df("features")))
 
     /**
       * threshold: max l2 distance to filter before sorting
