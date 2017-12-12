@@ -7,11 +7,13 @@ import org.apache.spark.sql.functions.{row_number, _}
 import org.apache.spark.ml.feature.VectorAssembler
 import org.rogach.scallop._
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.functions.{array, collect_list}
+import org.apache.spark.sql.functions.udf
 
 class SparkLSHSiftConf(arguments: Seq[String]) extends ScallopConf(arguments) {
   val bl = opt[Double](default = Some(2.0), descr = "Bucket length")
   val nht = opt[Int](default = Some(3), descr = "Number of hash tables")
-  val k = opt[Int](default = Some(1), descr = "Number of nearest neighbor in k-NN")
+  val k = opt[Int](default = Some(100), descr = "Number of nearest neighbor in k-NN")
   val sample = opt[Int](default = None, descr = "Run on sample")
   val dataset = opt[String](default = Some("mnist"), descr = "Dataset to run on, mnist or svhn")
   val mode = opt[String](default = Some("eval"), descr = "Use eval to run on parameters provided, search to search over space of parameters")
@@ -31,11 +33,12 @@ object SparkLSHSift {
     val query = assembler.transform(df).select("features")
     df = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/base.csv")
     val base = assembler.transform(df).select("features")
-    val groundtruth = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/groundtruth.csv")
+    val groundtruth = spark.read.option("inferSchema", "true").csv("data/sift/groundtruth.csv")
 //    val groundtruth = df.withColumn("features", struct(df.columns.head, df.columns.tail: _*)).select("features")
 
-    val df_sample_tmp = query.sample(false, 0.01)
-    val df_sample = df_sample_tmp.withColumn("UniqueID", monotonically_increasing_id)
+    val df_sample = query.sample(false, 0.01)
+    val df_sample_id = df_sample.withColumn("UniqueID", monotonically_increasing_id)
+    val base_id = base.withColumn("UniqueID", monotonically_increasing_id)
 
     /**
       * threshold: max l2 distance to filter before sorting
@@ -50,7 +53,7 @@ object SparkLSHSift {
     val k = conf.k()
     var brp = new BucketedRandomProjectionLSH().setBucketLength(2).setNumHashTables(2).setInputCol("features").setOutputCol("hashes")
     var model = brp.fit(base)
-    var transformedA = model.transform(base)
+    var transformedA = model.transform(base_id)
 
     val searchMode = conf.mode() == "search"
     val blSpace = if (searchMode) Seq(2.0, 5.0, 8.0) else Seq(conf.bl())
@@ -69,25 +72,28 @@ object SparkLSHSift {
           Utils.time {
             println("==========run kNN on testing data==========")
             // Compute the locality sensitive hashes for the input rows, then perform approximate similarity join.
-            val results = model.approxSimilarityJoin(transformedA, df_sample, threshold, "EuclideanDistance")
+            val results = model.approxSimilarityJoin(transformedA, df_sample_id, threshold, "EuclideanDistance")
 
             results.createOrReplaceTempView("results")
-            val sqlDF = spark.sql("SELECT datasetA.label as label_train, datasetB.label as label_test, datasetB as features, EuclideanDistance FROM results ")
+            val sqlDF = spark.sql("SELECT datasetA.UniqueID as trainID, datasetB.UniqueID as testID, EuclideanDistance FROM results ")
 
             // choose the majority from first k candidates
-            val w = Window.partitionBy($"features").orderBy($"EuclideanDistance".asc)
-            val dfTopk = sqlDF.withColumn("rn", row_number.over(w)).where($"rn" <= k).drop("rn")
+//            val w = Window.partitionBy($"testID").orderBy($"EuclideanDistance".asc)
+//            val dfTopk = sqlDF.withColumn("rn", row_number.over(w)).where($"rn" <= k).drop("rn")
 
-
-            val finalDF = dfTopk.map(t => {
-              val acc = if (t.getAs(0) == t.getAs(1)) 1 else 0
-              (acc: Int, t.getAs(1): Double, t.getAs(2): org.apache.spark.ml.linalg.SparseVector, t.getAs(3): Double)
-            })
-
-            // group by testing samples and compute the accuracy
-            val scores = finalDF.groupBy("_3").agg(sum("_1") / count("_1"))
-            val accuracy = scores.map(t => if (t.getDouble(1) > 0.5) 1 else 0).reduce { (x, y) => x + y }.toDouble / df_sample.count()
-            println("bl:", bl, "nht:", nht, "k:", k, "accuracy:", accuracy)
+//            val flatten = udf((xs: Seq[Seq[Double]]) => xs.flatten)
+//            val trackingIds = flatten(collect_list($"trainID"))
+//            dfTopk.groupBy($"testID").agg(collect_list("trainID"))
+//
+//            val finalDF = dfTopk.map(t => {
+//              val acc = if (t.getAs(0) == t.getAs(1)) 1 else 0
+//              (acc: Int, t.getAs(1): Double, t.getAs(2): org.apache.spark.ml.linalg.SparseVector, t.getAs(3): Double)
+//            })
+//
+//            // group by testing samples and compute the accuracy
+//            val scores = finalDF.groupBy("_3").agg(sum("_1") / count("_1"))
+//            val accuracy = scores.map(t => if (t.getDouble(1) > 0.5) 1 else 0).reduce { (x, y) => x + y }.toDouble / df_sample.count()
+//            println("bl:", bl, "nht:", nht, "k:", k, "accuracy:", accuracy)
           }
 
         }
