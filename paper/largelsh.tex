@@ -23,6 +23,7 @@
 \documentclass[letterpaper,twocolumn,10pt]{article}
 \usepackage{usenix,epsfig,endnotes}
 \usepackage{amsmath,amsfonts,amssymb}
+\usepackage{color}
 \usepackage{mathtools}
 \usepackage{graphicx}
 \usepackage{url}
@@ -45,13 +46,17 @@
 \theoremstyle{definition}
 \newtheorem{definition}{Definition}[section]
 
+\newcommand{\red}[1]{\textcolor{red}{#1}}
+
 \begin{document}
 
 %don't want date printed
 \date{}
 
 %make title bold and 14 pt font (Latex default is non-bold, 16 pt)
-\title{\Large \bf LargeLSH: An Exploration of the Performance of Locality Sensitive Hashing on High Dimensional Data Using Apache Spark}
+\title{\Large \bf LargeLSH: An Exploration of Locality Sensitive 
+Hashing for Approximate Nearest Neighbours on High Dimensional Data Using Apache 
+Spark}
 
 %for single author (just remove % characters)
 \author{
@@ -74,23 +79,81 @@ University of Waterloo
 
 
 \subsection*{Abstract}
-Your Abstract Text Goes Here.  Just a few facts.
-Whet our appetites.
+
+Nearest neighbour algorithms are a popular class of algorithms in machine learning 
+that has a wide range of applications. When the dimensionality of the data is 
+small, data structures from computational geometry can be used  
+for efficiently finding nearest neighbours. However, when the dimensionality of the 
+data is large, the space requirement of these data structures hinder them from 
+being used in practice. Today, many internet companies store high dimensional 
+features for their business entities, and it is not reasonable to assume all the 
+data are stored on the same machine. We explore the problem of approximate nearest 
+neighbour search in a distributed setting, specifically looking at the 
+effectiveness of locality sensitive hashing (LSH) for this problem on high 
+dimensional data. We find that \red{ipsum...}
+
 
 \section{Introduction}
 
+The problem of finding nearest neighbours has important applications in many areas. 
+Finding the 
+nearest neighbours means finding the nearest points to some reference point defined 
+by some distance metric in some space. For example, e-Commerce websites might want 
+to find the nearest neighbours of a product to recommend similar products to 
+consumers for its recommender system, and financial institutions might want to find 
+nearest neighbours of an account that performs fraudulent activities to identify 
+similarly suspicious accounts. Some areas in computer science which the nearest 
+neighbour problem is important include databases and data mining 
+\cite{berkhin2006survey}, information retrieval \cite{croft2010search}, image and 
+video databases \cite{faloutsos1994efficient,flickner1995query}, and machine 
+learning \cite{weinberger2006distance}. \\
 
+If the data set is of size $n$, and each data point is of dimension $d$, a naive 
+approach would involve at looking at all the points in the entire data set and 
+finding the nearest neighbours, a computation that has runtime of $\Theta(nd)$. 
+Using data structures from computation geometry, we can reduce this to 
+$\Theta(d\log(n))$, but the space complexity is $n^{O(d)}$, which is infeasible for 
+high-dimensional data \cite{shalev2014understanding}. To avoid this ``curse of 
+dimensionality", we can look toward approximate nearest neighbours, which is 
+guaranteed to be within some distance bound of the true nearest neighbour 
+(mathematically defined in next section). Some ways to tackle the approximate 
+nearest neighbour problem include kd trees, balltrees, and locality sensitive 
+hashing (LSH) \cite{shakhnarovich2006nearest}. \\
 
+Amidst the decreasing storage cost and the increasing popularization of cloud 
+computing and big data, we can no longer assume that the high dimensional feature 
+vectors of the data set can fit into the memory of one machine. For example, the 80 
+million tiny images data set for object and scene recognition is 240 GB, far larger 
+than the available memory of a usual computer \cite{torralba200880}. Many 
+organizations also store their data in distributed file systems, such as the Hadoop 
+Distributed File System (HDFS) \cite{shvachko2010hadoop}. MapReduce 
+\cite{dean2008mapreduce} and Apache Spark \cite{zaharia2010spark} have become the 
+de-facto distributed computation frameworks for massive parallel computation on 
+large data sets \cite{suri2011counting}. \\
+
+Given the importance of finding nearest neighbours and the proliferation of Spark, 
+it makes sense to investigate the application of Spark to the approximate nearest 
+neighbour (ANN) problem. Specifically, we focus on LSH using Spark, since LSH seems 
+to be less susceptible to the curse of dimensionality. We investigate the effect of 
+parameters on the accuracy versus running time tradeoff, the scalability of the 
+Spark implementation of LSH, and \red{a comparison of LSH to tree-based approaches 
+for ANN}.
+
+\section{Background and Related Work}
 
 \begin{definition}[Nearest Neighbor Search]
-	Given a set $P$ of $n$ points in $\mathbb{R}^n$, for any query $q$, return the $p \in P$ minimizing $\| p-q \|$, i.e. we wish to find the point closest to $q$ by some metric.
+
+	Given a  point set $P \in \mathbb{R}^{n \cdot d}$, for any query $q$, return 
+	the $p \in P$ minimizing $\| p-q \|$, i.e. we wish to find the point closest to 
+	$q$ by some metric.
+
 \end{definition}
 
 \begin{definition}[$k$-Nearest Neighbor Search]
-	Given parameter $k$ and a point set $P \in \mathbb{R}^{n \cdot d}$, for any query $q$, if any such exist, return the  $p \in P$ s.t. $\| p-q \| \leq r$, i.e. we wish to find the closest k points.
+	Given parameter $k$ and a point set $P \in \mathbb{R}^{n \cdot d}$, for any 
+	query $q$, if any such exist, return the  $p \in P$ s.t. $\| p-q \| \leq r$, 
+	i.e. we wish to find the closest k points.
 \end{definition}
-
-\section{Background and Related Work}
 
 Some embedded literal typset code might 
 look like the following :
