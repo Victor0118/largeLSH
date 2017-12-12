@@ -1,7 +1,7 @@
 package largelsh
 
 import org.apache.spark.ml.feature.BucketedRandomProjectionLSH
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{row_number, _}
 import org.apache.spark.ml.feature.VectorAssembler
@@ -10,6 +10,7 @@ import org.rogach.scallop._
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.functions.{array, collect_list}
 import org.apache.spark.sql.functions.udf
+import org.apache.spark.sql.types.IntegerType
 
 import scala.collection.mutable.WrappedArray
 
@@ -36,9 +37,14 @@ object SparkLSHSift {
     df = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/base.csv")
     val base = assembler.transform(df).select("features")
     df = spark.read.option("inferSchema", "true").csv("data/sift/groundtruth.csv")
-    assembler = new VectorAssembler().setInputCols(df.columns).setOutputCol("features")
-//    val groundtruth = assembler.transform(df).select("features")
-    val groundtruth = df.withColumn("features", array(df.columns.head, df.columns.tail: _*)).select("features")
+    val df2 = df.select(
+      df.columns.map {
+        case other => df(other).cast(IntegerType)
+      }: _*
+    )
+
+//    assembler = new VectorAssembler().setInputCols(df.columns).setOutputCol("features")
+    val groundtruth = df2.withColumn("features", array(df.columns.head, df.columns.tail: _*)).select("features")
 
     //    monotonically_increasing_id is not stable
     //    val df_sample_id = df_sample.withColumn("UniqueID", monotonically_increasing_id)
@@ -47,9 +53,7 @@ object SparkLSHSift {
     val query_id = query.withColumn("id", row_number.over(Window.partitionBy(lit(1)).orderBy(lit(1))))
     val df_sample_id = query_id.sample(false, 1)
     val base_id = base.withColumn("id", row_number.over(Window.partitionBy(lit(1)).orderBy(lit(1))))
-    val groundtruth_id = groundtruth.withColumn("id", row_number.over(Window.partitionBy(lit(1)).orderBy(lit(1))))
-//    val vectorHead = udf{ x:DenseVector => x(0) }
-//    groundtruth_id.withColumn("gt_array", vectorHead(df("features")))
+    val groundtruth_id = groundtruth.withColumn("testID", row_number.over(Window.partitionBy(lit(1)).orderBy(lit(1))))
 
     /**
       * threshold: max l2 distance to filter before sorting
@@ -70,7 +74,6 @@ object SparkLSHSift {
     val blSpace = if (searchMode) Seq(2.0, 5.0, 8.0) else Seq(conf.bl())
     val nhtSpace = if (searchMode) Seq(3, 5, 7) else Seq(conf.nht())
     val kSpace = if (searchMode) Seq(1, 5, 9) else Seq(conf.k())
-
 
 
     for (bl <- blSpace) {
@@ -97,26 +100,23 @@ object SparkLSHSift {
             val flatten = udf((xs: Seq[Seq[Double]]) => xs.flatten)
             val trackingIds = flatten(collect_list($"trainID"))
             val prediction = dfTopk.groupBy($"testID").agg(collect_list("trainID"))
-            prediction.join(groundtruth_id).where($"testID" === $"id")
 
-            val same_elements = udf { (a: WrappedArray[String],
-                                       b: WrappedArray[String]) =>
-              if (a.intersect(b).length == b.length){ 1 }else{ 0 }
-            }
-            df.withColumn("test",same_elements(col("genreList1"),col("genreList2")))
-//            intersect(select(newHiresDF, 'name'), select(salesTeamDF,'name'))
-            val interscetion = prediction.sort("testID").select($"collect_list(trainID)").intersect(groundtruth.select($"features"))
-//            val finalDF = dfTopk.map(t => {
-//              val acc = if (t.getAs(0) == t.getAs(1)) 1 else 0
-//              (acc: Int, t.getAs(1): Double, t.getAs(2): org.apache.spark.ml.linalg.SparseVector, t.getAs(3): Double)
-//            })
-//
-//            // group by testing samples and compute the accuracy
-//            val scores = finalDF.groupBy("_3").agg(sum("_1") / count("_1"))
-//            val accuracy = scores.map(t => if (t.getDouble(1) > 0.5) 1 else 0).reduce { (x, y) => x + y }.toDouble / df_sample.count()
-//            println("bl:", bl, "nht:", nht, "k:", k, "accuracy:", accuracy)
+//            val same_elements = udf { (a: WrappedArray[Int],
+//                                       b: WrappedArray[Int]) =>
+//              if (a.intersect(b).length == b.length){ 1 }else{ 0 }
+//            }
+//            val t = pre_gt.withColumn("test", same_elements(col("collect_list(trainID)"),col("features")))
+
+            val pre_gt = prediction.join(groundtruth_id, "testID")
+            val res = pre_gt.map{
+              case Row(testID: Int, pred: Array[Int], gts: Array[Int]) =>
+                (gts intersect pred).size
+            }.reduce(_+_)
+              .sum("")
+
+            val accuracy = res / ( k * 10000 )
+            println("bl:", bl, "nht:", nht, "k:", k, "accuracy:", accuracy)
           }
-
         }
       }
     }
