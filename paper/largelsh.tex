@@ -28,7 +28,9 @@
 \usepackage{graphicx}
 \usepackage{url}
 \usepackage{listings}
-\usepackage{algorithm}
+\usepackage[linesnumbered,ruled]{algorithm2e}
+
+%\usepackage{algorithm}
 \usepackage[noend]{algpseudocode}
 \usepackage[utf8]{inputenc}
 \usepackage[english]{babel}
@@ -142,9 +144,11 @@ for ANN}.
 \section{Background and Related Work}
 
 \begin{definition}[Nearest Neighbor Search]
+
 	Given a  point set $P \in \mathbb{R}^{n \cdot d}$, for any query $q$, return 
 	the $p \in P$ minimizing $\| p-q \|$, i.e. we wish to find the point closest to 
 	$q$ by some metric.
+
 \end{definition}
 
 \begin{definition}[$k$-Nearest Neighbor Search]
@@ -222,7 +226,6 @@ and people will really notice it.\\
 The noindent at the start of this paragraph makes it clear that it's
 a continuation of the preceding text, not a new para in its own right.
 
-
 Now this is an ingenious way to get a forced space.
 {\tt Real~$*$} and {\tt double~$*$} are equivalent. 
 
@@ -245,78 +248,104 @@ This concludes the definitions tag.
 
 \subsection{Locality Sensitive Hashing}
 Locality-sensitive hashing (abbreviated LSH) is a method often used for answering approximate nearest neighbour queries in high-dimensional data sets. According to varity of the hash function design, LSH has many implementation. One of the most popular approach is random project(RP). The main idea of RP is .... \cite{wang2014hashing}  
-\subsubsection{Random Projection into  Euclidean Space}
-p-Stable Distribution Scheme \cite{datar2004locality}
 
-two vectors which are close have a small difference between
-norms, and should collide
-
-dot product is instead used to assign a hash value to v. First, we projects to a value on the real line. Next, we split line into equal-width segments of size r for buckets.
-
-\begin{align*}
-h_{a,b}(v) = \floor{\frac{(a\cdot v + b)}{w} }
-\end{align*}
 
 \subsubsection{Random Projection into Hamming  Space}
+\begin{definition}[Locality-sensitive]
+	A hash function set $H = {h : S \rightarrow U}$ is called $(r_1, r_2, p_1, p_2)-$sensitive for certain distance measure $d(\cdot)$ if for any $v, q \in S$
+	\begin{itemize}
+		\item if $d(v, q)<r_1$, then $Pr_H[h(v)=h(q)]\geq p_1$
+		\item if $d(v, q)>r_2$, then $Pr_H[h(v)=h(q)]\leq p_2$		
+	\end{itemize}
+\end{definition}
+Originally, LSH embeds data space into the Hamming space. I
 
 \begin{align*}
-h_{a_1, a_2, ..., a_K}(v) = [\sign{(a_1\cdot v )}, \sign{(a_1\cdot v )}, ..., \sign{(a_K\cdot v )}]
+g(v) &= h_{a_1, a_2, ..., a_K}(v)  \\
+&= [\sign{(a_1\cdot v )}, \sign{(a_1\cdot v )}, ..., \sign{(a_K\cdot v )}]
 \end{align*}
 
-\subsection{K-Nearest Neighbor for Classification}
-The psudocode of applying distributed KNN algorithm to classification tasks can be viewed in \ref{classification}.
-\begin{algorithm}[H]
-	\caption{Distributed Approximate k-Nearest Neighbor Search for Classification}
-	\label{classification}
-	\begin{algorithmic}[1]
-		\Procedure{MyProcedure}{}
-		\State $\textit{stringlen} \gets \text{length of }\textit{string}$
-		\State $i \gets \textit{patlen}$
-		\BState \emph{top}:
-		\If {$i > \textit{stringlen}$} \Return false
-		\EndIf
-		\State $j \gets \textit{patlen}$
-		\BState \emph{loop}:
-		\If {$\textit{string}(i) = \textit{path}(j)$}
-		\State $j \gets j-1$.
-		\State $i \gets i-1$.
-		\State \textbf{goto} \emph{loop}.
-		\State \textbf{close};
-		\EndIf
-		\State $i \gets i+\max(\textit{delta}_1(\textit{string}(i)),\textit{delta}_2(j))$.
-		\State \textbf{goto} \emph{top}.
-		\EndProcedure
-	\end{algorithmic}
-\end{algorithm}
+\subsubsection{Random Projection into  Euclidean Space}
 
-\subsection{Distributed KNN through Spark}
+\begin{definition}[p-stable distribution]
+	A distribution D is callled p-stable if there exists $p \geq 0$ such that for any n numbers $v_1, v_2,...,v_n$ and i.i.d. variables $X_1, X_2,...,X_n$ with distribution D, the random variable $\sum_i{v_i X_i} $ and $ (\sum_i |v_i|^p)^{1/p}X$ have the same distribution.
+
+
+\end{definition}
+According to \cite{zolotarev1986one}, stable distribution exist for any $p \in (0, 2]$. In particular:
+\begin{itemize}	
+	\item a Cauchy distribution with density function $c(x) = \frac{1}{\pi}\frac{1}{1+x^2}$, is 1-stable
+	\item a Gaussian (normal) distribution with density function $g(x) = \frac{1}{\sqrt{2\pi}}e^{-x^2/2}$, is 2-stable
+\end{itemize}
+
+First, we projects to a value on the real line. Next, we split line into equal-width segments of size r for buckets. Then we project the data point on the line. It is not hard to understand that the closer two points in the data space, the higher the probability that they project to the same segment. Through the discussion of p-stable distribution above, we know dot product can approximate the length of $\Vert v\Vert_p$. So the dot product keeps the property to hash into the same locality sensitivity.
+
+The paper \cite{datar2004locality} proposes a hash function set:
+
+
+
+\begin{align*}
+g(v) = h_{a,b}(v) = \floor{\frac{(a\cdot v + b)}{w} }
+\end{align*}
+
+where $b \in (0, w)$ is a random number and $w$ is the length of line segment, or bucket length.
+
+\subsubsection{LSH algorithm for k-Nearest Neighbor search for Classification}
+The psudocode of applying distributed KNN algorithm to classification tasks can be viewed in \ref{classification}.
+
+\begin{algorithm}
+	\SetKwInOut{Input}{Input}
+	\SetKwInOut{Output}{Output}
+	\underline{Function LSHkNN} $(H,Q)$\;
+	\Input{Hash Table $H$, Query Data Set $Q$, and Neighbor Number $k$}
+	\Output{Prediction List of labels $L$}
+	$L \leftarrow \infty$
+	
+	\For(\tcp*[f]{for each query sample}){$q=1, 2, \ldots, n$ }{
+		\For(\tcp*[f]{for each hash table}){$i=1, 2, \ldots, m$}{        
+			compute $h_{q, i} = \mathsf{g}_i(Q_q)$ \\
+			find candidates $C_i = findHash(H, h_{q, i})$
+		}
+		collect candidates C = $\bigcup\limits_{i=1}^{m} C_{i}$ \\
+
+		\eIf{$length(C)\neq 0$}
+		{
+			find best candidates by some distance matric $C^{\prime} = findTop(C, min(k, length(C)))$ \\
+			get the majority $l_q = \arg \max\limits_{c \in C^{\prime}} freq(label_c)$
+			c
+		}
+		{
+			$L.insert(lable_{random})$
+		}
+	}
+	return $L$\;
+		
+	\caption{LSH-based Approximate k-Nearest Neighbor Search Algorithm}
+	\label{classification}
+\end{algorithm}
+\subsection{Distributed LSH through Spark}
 
 The psudocode of our distributed KNN algorithm implementation can be viewed in \ref{knn}.
-\begin{algorithm}[H]
-	\caption{Distributed LSH-based Approximate k-Nearest Neighbor Search Algorithm}
+
+
+\begin{algorithm}
+	\SetKwInOut{Input}{Input}
+	\SetKwInOut{Output}{Output}
+	\underline{Function LSHkNN} $(H,Q)$\;
+	\Input{Hash Table $H$, Query Data Set $Q$, Neighbor Number $k$, and distance threshold $d$}
+	\Output{Prediction List of labels $L$}
+	generate ID column for $H$ and $Q$ \\
+	results $\leftarrow$ H.approxSimilarityJoin(Q) \\
+	resultsThres $\leftarrow$ threshold(, $d$) \\
+	resultsSelected $\leftarrow$ SELECT trainID testID distance FROM results\_thres \\
+	resultsPartitioned $\leftarrow$  findTopkByPartition($k$) \\
+	$L$ = resultsPartitioned.map(IntersectionVector())
+	
+	return $L$\;
+
+	\caption{Distributed LSH}
 	\label{knn}
-	\begin{algorithmic}[1]
-		\Procedure{MyProcedure}{}
-		\State $\textit{stringlen} \gets \text{length of }\textit{string}$
-		\State $i \gets \textit{patlen}$
-		\BState \emph{top}:
-		\If {$i > \textit{stringlen}$} \Return false
-		\EndIf
-		\State $j \gets \textit{patlen}$
-		\BState \emph{loop}:
-		\If {$\textit{string}(i) = \textit{path}(j)$}
-		\State $j \gets j-1$.
-		\State $i \gets i-1$.
-		\State \textbf{goto} \emph{loop}.
-		\State \textbf{close};
-		\EndIf
-		\State $i \gets i+\max(\textit{delta}_1(\textit{string}(i)),\textit{delta}_2(j))$.
-		\State \textbf{goto} \emph{top}.
-		\EndProcedure
-	\end{algorithmic}
 \end{algorithm}
-
-
 
 \section{Experimental Setup}
 
@@ -333,7 +362,6 @@ SVHN\footnote{\url{http://ufldl.stanford.edu/housenumbers/}} is a real-world ima
 \subsection{Task}
 \subsubsection{Nearest Neighbor Search}
 \subsubsection{Image Classification}
-
 \subsection{Parameters}
 \subsubsection{Hardware Configuration}
 We use ..
