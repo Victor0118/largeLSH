@@ -30,6 +30,7 @@ object SparkLSHSift {
   def main(args: Array[String]) {
     val conf = new SparkLSHConf(args)
     val spark: SparkSession = SparkSession.builder().appName("LargeLSH").getOrCreate()
+    spark.sparkContext.setLogLevel("INFO")
 
     var df = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/query.csv")
     var assembler = new VectorAssembler().setInputCols(df.columns).setOutputCol("features")

@@ -290,15 +290,15 @@ g(v) = h_{a,b}(v) = \floor{\frac{(a\cdot v + b)}{w} }
 
 where $b \in (0, w)$ is a random number and $w$ is the length of line segment, or bucket length.
 
-\subsubsection{LSH algorithm for k-Nearest Neighbor search}
+\subsubsection{LSH algorithm for k-Nearest Neighbor search for Classification}
 The psudocode of applying distributed KNN algorithm to classification tasks can be viewed in \ref{classification}.
 
 \begin{algorithm}
 	\SetKwInOut{Input}{Input}
 	\SetKwInOut{Output}{Output}
-	\underline{function Euclid} $(a,b)$\;
-	\Input{Hash Table H and Query Data Set Q}
-	\Output{Prediction List of labels L}
+	\underline{Function LSHkNN} $(H,Q)$\;
+	\Input{Hash Table $H$, Query Data Set $Q$, and Neighbor Number $k$}
+	\Output{Prediction List of labels $L$}
 	$L \leftarrow \infty$
 	
 	\For(\tcp*[f]{for each query sample}){$q=1, 2, \ldots, n$ }{
@@ -310,9 +310,9 @@ The psudocode of applying distributed KNN algorithm to classification tasks can 
 
 		\eIf{$length(C)\neq 0$}
 		{
-			find best candidates by some distance matric $C^{\prime} = findFirst(C, min(k, length(C)))$ \\
+			find best candidates by some distance matric $C^{\prime} = findTop(C, min(k, length(C)))$ \\
 			get the majority $l_q = \arg \max\limits_{c \in C^{\prime}} freq(label_c)$
-			$L.insert(l_q)$
+			c
 		}
 		{
 			$L.insert(lable_{random})$
@@ -323,7 +323,7 @@ The psudocode of applying distributed KNN algorithm to classification tasks can 
 	\caption{LSH-based Approximate k-Nearest Neighbor Search Algorithm}
 	\label{classification}
 \end{algorithm}
-\subsection{Distributed KNN through Spark}
+\subsection{Distributed LSH through Spark}
 
 The psudocode of our distributed KNN algorithm implementation can be viewed in \ref{knn}.
 
@@ -331,23 +331,19 @@ The psudocode of our distributed KNN algorithm implementation can be viewed in \
 \begin{algorithm}
 	\SetKwInOut{Input}{Input}
 	\SetKwInOut{Output}{Output}
-	\underline{function Euclid} $(a,b)$\;
-	\Input{Two nonnegative integers $a$ and $b$}
-	\Output{$\gcd(a,b)$}
-	\For(\tcp*[f]{for each query sample}){$q=1, 2, \ldots, n$ }{
-		\For(\tcp*[f]{for each hash table}){$i=1, 2, \ldots, m$}{        
-			compute $h_{q, i} = \mathsf{g}_i(Q_q)$ \\
-			find candidates $C_i = findHash(H, h_{q, i})$
-		}
-	}
-	\eIf{$b=0$}
-	{
-		return $a$\;
-	}
-	{
-		return Euclid$(b,a\mod b)$\;
-	}
-	\caption{Distributed Approximate k-Nearest Neighbor Search for Classification}
+	\underline{Function LSHkNN} $(H,Q)$\;
+	\Input{Hash Table $H$, Query Data Set $Q$, Neighbor Number $k$, and distance threshold $d$}
+	\Output{Prediction List of labels $L$}
+	generate ID column for $H$ and $Q$ \\
+	results $\leftarrow$ H.approxSimilarityJoin(Q) \\
+	resultsThres $\leftarrow$ threshold(, $d$) \\
+	resultsSelected $\leftarrow$ SELECT trainID testID distance FROM results\_thres \\
+	resultsPartitioned $\leftarrow$  findTopkByPartition($k$) \\
+	$L$ = resultsPartitioned.map(IntersectionVector())
+	
+	return $L$\;
+
+	\caption{Distributed LSH}
 	\label{knn}
 \end{algorithm}
 
