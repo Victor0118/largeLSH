@@ -31,6 +31,7 @@ object SparkLSHSift {
     val conf = new SparkLSHConf(args)
     val spark: SparkSession = SparkSession.builder().appName("LargeLSH").getOrCreate()
     spark.sparkContext.setLogLevel("INFO")
+    import spark.implicits._
 
     var df = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/query.csv")
     var assembler = new VectorAssembler().setInputCols(df.columns).setOutputCol("features")
@@ -102,18 +103,11 @@ object SparkLSHSift {
             val trackingIds = flatten(collect_list($"trainID"))
             val prediction = dfTopk.groupBy($"testID").agg(collect_list("trainID"))
 
-//            val same_elements = udf { (a: WrappedArray[Int],
-//                                       b: WrappedArray[Int]) =>
-//              if (a.intersect(b).length == b.length){ 1 }else{ 0 }
-//            }
-//            val t = pre_gt.withColumn("test", same_elements(col("collect_list(trainID)"),col("features")))
-
             val pre_gt = prediction.join(groundtruth_id, "testID")
             val res = pre_gt.map{
               case Row(testID: Int, pred: Array[Int], gts: Array[Int]) =>
                 (gts intersect pred).size
             }.reduce(_+_)
-              .sum("")
 
             val accuracy = res / ( k * 10000 )
             println("bl:", bl, "nht:", nht, "k:", k, "accuracy:", accuracy)
