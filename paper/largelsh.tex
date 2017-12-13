@@ -123,7 +123,7 @@ nearest neighbour problem include kd trees, balltrees, and locality sensitive
 hashing (LSH) \cite{shakhnarovich2006nearest}. \\
 
 Amidst the decreasing storage cost and the increasing popularization of cloud 
-computing and big data, we can no longer assume that the high dimensional feature 
+computing and big dat\textbf{a, }we can no longer assume that the high dimensional feature 
 vectors of the data set can fit into the memory of one machine. For example, the 80 
 million tiny images data set for object and scene recognition is 240 GB, far larger 
 than the available memory of a usual computer \cite{torralba200880}. Many 
@@ -142,6 +142,8 @@ Spark implementation of LSH, and \red{a comparison of LSH to tree-based approach
 for ANN}.
 
 \section{Background and Related Work}
+
+Distributed kd-trees \cite{aly2011distributed}
 
 \begin{definition}[Nearest Neighbor Search]
 
@@ -285,7 +287,7 @@ The paper \cite{datar2004locality} proposes a hash function set:
 
 
 \begin{align*}
-g(v) = h_{a,b}(v) = \floor{\frac{(a\cdot v + b)}{w} }
+g(v) = h_{a,b,w}(v) = \floor{\frac{(a\cdot v + b)}{w} }
 \end{align*}
 
 where $b \in (0, w)$ is a random number and $w$ is the length of line segment, or bucket length.
@@ -296,7 +298,7 @@ The psudocode of applying distributed KNN algorithm to classification tasks can 
 \begin{algorithm}
 	\SetKwInOut{Input}{Input}
 	\SetKwInOut{Output}{Output}
-	\underline{Function LSHkNN} $(H,Q)$\;
+	\underline{Function LSHkNN} $(H, Q, k)$\;
 	\Input{Hash Table $H$, Query Data Set $Q$, and Neighbor Number $k$}
 	\Output{Prediction List of labels $L$}
 	$L \leftarrow \infty$
@@ -331,15 +333,15 @@ The psudocode of our distributed KNN algorithm implementation can be viewed in \
 \begin{algorithm}
 	\SetKwInOut{Input}{Input}
 	\SetKwInOut{Output}{Output}
-	\underline{Function LSHkNN} $(H,Q)$\;
+	\underline{Function largeLSH} $(H, Q, k, d)$\;
 	\Input{Hash Table $H$, Query Data Set $Q$, Neighbor Number $k$, and distance threshold $d$}
 	\Output{Prediction List of labels $L$}
 	generate ID column for $H$ and $Q$ \\
-	results $\leftarrow$ H.approxSimilarityJoin(Q) \\
-	resultsThres $\leftarrow$ threshold(, $d$) \\
-	resultsSelected $\leftarrow$ SELECT trainID testID distance FROM results\_thres \\
-	resultsPartitioned $\leftarrow$  findTopkByPartition($k$) \\
-	$L$ = resultsPartitioned.map(IntersectionVector())
+	results $\leftarrow$ H.approxSimilarityJoin(Q)  \tcp*[f]{search the hash table and union the results through a map-reduce way} \\
+	resultsThres $\leftarrow$ filter(results, $d$) \tcp*[f]{get rid of candidates far from the query points}\\
+	resultsSelected $\leftarrow$ \texttt{SELECT trainID, testID, distance FROM results\_thres} \\
+	resultsPartitioned $\leftarrow$  findTopkByPartition(resultsSelected, $k$) \\
+	$L$ $\leftarrow$ resultsPartitioned.map(groundtruthVector Intersect predictionVector)
 	
 	return $L$\;
 
