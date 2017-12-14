@@ -84,7 +84,7 @@ object SparkLSHSift {
           println("==========transform training data==========")
           brp = new BucketedRandomProjectionLSH().setBucketLength(bl).setNumHashTables(nht).setInputCol("features").setOutputCol("hashes")
           model = brp.fit(base)
-          transformedA = model.transform(base)
+          transformedA = model.transform(base_id)
         }
         for (k <- kSpace) {
           Utils.time {
