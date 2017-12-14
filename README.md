@@ -1,6 +1,9 @@
 # largeLSH
 Course Project for CS 798
 
+Presentation Link: https://docs.google.com/presentation/d/14DKWcGOVzM7ybIG6Uv3ZF-jqdMN-D-gJOFD9DOFp1sE/edit?usp=sharing
+Experiment Data Spreadsheet: https://docs.google.com/spreadsheets/d/1AwBqONysRTfGpHeHmLJdd-U8EXq-Mtz17rj5TwPjhoY/edit?usp=sharing
+
 
 ## Related Work
 
