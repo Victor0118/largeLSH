@@ -7,13 +7,13 @@ object DataLoader {
 
   def getDatasets(dataset: String, sample: Option[Int], sc: SparkContext) = {
     var training = dataset match {
-      case "mnist" => MLUtils.loadLibSVMFile(sc, "data/mnist")
-      case "svhn" => MLUtils.loadLibSVMFile(sc, "data/SVHN")
+      case "mnist" => MLUtils.loadLibSVMFile(sc, "data/mnist.bz2")
+      case "svhn" => MLUtils.loadLibSVMFile(sc, "data/SVHN.bz2")
     }
 
     var testing = dataset match {
-      case "mnist" => MLUtils.loadLibSVMFile(sc, "data/mnist.t")
-      case "svhn" => MLUtils.loadLibSVMFile(sc, "data/SVHN.t")
+      case "mnist" => MLUtils.loadLibSVMFile(sc, "data/mnist.t.bz2")
+      case "svhn" => MLUtils.loadLibSVMFile(sc, "data/SVHN.t.bz2")
     }
 
     if (sample.isDefined) {
