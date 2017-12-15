@@ -119,7 +119,7 @@ high-dimensional data \cite{shalev2014understanding}. To avoid this ``curse of
 dimensionality", we can look toward approximate nearest neighbours, which is 
 guaranteed to be within some distance bound of the true nearest neighbour 
 (mathematically defined in next section). Some ways to tackle the approximate 
-nearest neighbour problem include kd trees, balltrees, and locality sensitive 
+nearest neighbour problem include k-d trees, balltrees, and locality sensitive 
 hashing (LSH) \cite{shakhnarovich2006nearest}. \\
 
 Amidst the decreasing storage cost and the increasing popularization of cloud 
@@ -135,57 +135,112 @@ large data sets \cite{suri2011counting}. \\
 
 Given the importance of finding nearest neighbours and the proliferation of Spark, 
 it makes sense to investigate the application of Spark to the approximate nearest 
-neighbour (ANN) problem. Specifically, we focus on LSH using Spark, since LSH seems 
-to be less susceptible to the curse of dimensionality. We investigate the effect of 
-parameters on the accuracy versus running time tradeoff, the scalability of the 
-Spark implementation of LSH, and \red{a comparison of LSH to tree-based approaches 
-for ANN}.
+neighbour (ANN) problem. Specifically, we focus on LSH using Spark, since LSH is an 
+extremely simple method that can scale to high-dimensional data. LSH for Spark is 
+an active area, since the LHS module only became available in Spark in December 
+2016. 
+\footnote{https://databricks.com/blog/2017/05/09/detecting-abuse-scale-locality-sensitive-hashing-uber-engineering.html}
+  Previously it had to be implemented from scratch using the fundamental parallel 
+  data processing constructs. We investigate the effect of parameters on the 
+  accuracy versus running time tradeoff, the scalability of the Spark 
+  implementation of LSH, and compare it to an open-source Spark spill tree 
+  approach. \\
+
 
 \section{Background and Related Work}
 
-Distributed kd-trees \cite{aly2011distributed}
+We first formally define the nearest neighbour problems.
 
-\begin{definition}[Nearest Neighbor Search]
-
-	Given a  point set $P \in \mathbb{R}^{n \cdot d}$, for any query $q$, return 
-	the $p \in P$ minimizing $\| p-q \|$, i.e. we wish to find the point closest to 
-	$q$ by some metric.
-
+\begin{definition}[Nearest Neighbour]
+	
+	Given a  point set $P \in \mathbb{R}^{n \cdot d}$, for any query point $q \in 
+	\mathbb{R}^d$, return the $p \in P$ minimizing $\| p-q \|$, i.e. we wish to 
+	find the point closest to $q$ by some metric.
+	
 \end{definition}
 
-\begin{definition}[$k$-Nearest Neighbor Search]
-	Given parameter $k$ and a point set $P \in \mathbb{R}^{n \cdot d}$, for any 
-	query $q$, if any such exist, return the  $p \in P$ s.t. $\| p-q \| \leq r$, 
-	i.e. we wish to find the closest k points.
+\begin{definition}[$(1 + \epsilon)$-Approximate Nearest Neighbour]
+	Given a  point set $P \in \mathbb{R}^{n \cdot d}$, for any query point $q \in 
+	\mathbb{R}^d$, if $p \in P$ satisfies
+	\[ \| p-q \| \leq (1+\epsilon)\| p^*-q \|  \]
+	where $\epsilon > 0$ and $p^*$ is the closest nearest neighbour to $q$, then 
+	$p$ is a $(1 + \epsilon)$-approximate nearest neighbour of $q$. 
+	\cite{arya1994optimal}
 \end{definition}
 
-Some embedded literal typset code might 
-look like the following :
+There are two main families of approaches for the approximate nearest neighbour 
+problem \cite{fu2016efanna}. The first is based on tree-based approaches that use a 
+hierarchical 
+structure, such as k-d trees and its variants. However, k-d trees do not scale well 
+when the number of dimensions increase. A high level sketch of how a k-d tree 
+approach works is as follows. Each node of the tree splits its children into two 
+halves, by a hyperplane perpendicular to a particular dimension. This is done 
+recursively so in the leaf nodes we have the points themselves. Care is taken to 
+help ensure that the split is roughly balanced. To find the nearest neighbours of a 
+query point, we traverse down the tree, picking the side of the hyperplane the 
+query point is on at each node. When we get to the leaf, we backtrack and find more 
+candidates, and return the candidate whose distance is closest to the query point. 
+When the dimension is large many nodes need to be searched 
+\cite{silpa2008optimised}. \\
 
-{\tt \small
-\begin{verbatim}
-int wrap_fact(ClientData clientData,
-              Tcl_Interp *interp,
-              int argc, char *argv[]) {
-    int result;
-    int arg0;
-    if (argc != 2) {
-        interp->result = "wrong # args";
-        return TCL_ERROR;
-    }
-    arg0 = atoi(argv[1]);
-    result = fact(arg0);
-    sprintf(interp->result,"%d",result);
-    return TCL_OK;
-}
-\end{verbatim}
-}
+The second family of approaches is based on hashing, which includes methods such as 
+LSH, spectral based hashing, and quantization \cite{wang2014hashing}. The main idea 
+of hashing-based approaches is to hash points to buckets such that a bucket is 
+likely to contain similar points with high probability. To boost recall, more 
+buckets need to be examined, since two points could appear dissimilar under one 
+hash 
+function but similar under another function. Hashing can be used to map a point to 
+a short code, or a sequence of bits. Not only can short codes be used as bucket 
+identifiers to hold similar data points together, but also there is research on 
+computing distance directly using the short code. \\
 
-Now we're going to cite somebody.  Watch for the cite tag.
-Here it comes~\cite{Chaum1981,Diffie1976}.  The tilde character (\~{})
-in the source means a non-breaking space.  This way, your reference will
-always be attached to the word that preceded it, instead of going to the
-next line.
+More recently, there is also work on building a KNN graph before querying. The main 
+idea of the KNN graph is NN-expansion, the neighbours of a neighbour is also likely 
+going to be similar. According to Fu and Cai in \cite{fu2016efanna}, ``[the 
+graph construction techniques] are still not efficient enough in the context  of  
+big data". To become more efficient, researchers resorted to approximate graph 
+construction techniques. They first divide up the data into subsets, build the 
+graph on each subset, and finally merge the subgraphs. However, there is no 
+rigorous study on the error bound of using approximate KNN graphs compared to using 
+exact KNN graphs. \\
+
+In the era of big data, it is becoming more critical for nearest neighbour 
+algorithms to scale to large high-dimensional data sets. Although one can store the 
+data on disk and only load the data into memory as needed, Liu et al. argued that 
+it is far too slow compared to having everything in memory despite the existence of 
+smart paging algorithms \cite{liu2007clustering}. Aly et al. showed a method 
+using distributed k-d trees for image retrieval on a data set of 100 million images 
+running on 2048 machines based on MapReduce \cite{aly2011distributed}, whereas 
+before large-scale 
+image search could not scale past a few million images due to the limited memory of 
+a single machine. They designate two types of machines, a root machine and many 
+leaf machines. The root machine stores the top of the k-d tree while the leaf 
+machines store the different branch of the tree. The root machine would forward the 
+request to a subset of leaf machines at query time. Liu et al. implemented a 
+parallel version of spill trees \cite{liu2007clustering}. A spill tree is a variant 
+of a metric tree (class of tree data structures for indexing data in metric space). 
+It is called a spill tree since left and right children can share objects, hence 
+``spilling" over each other. The overlap region can capture the sense of 
+approximity instead of being limited to exactness. The bigger the overlap region 
+width the slower the algorithm, but better the accuracy. There exists an 
+open-source Spark implementation of the parallel spill tree idea. 
+\footnote{https://github.com/saurfang/spark-knn} \\
+
+The most similar published work to our work include LSH At Large by Haghani et al. 
+\cite{haghani2008lsh} and RankReduce by Stupar et al. \cite{stupar2010rankreduce}. 
+Our work differs from LSH At Large since LSH At Large is designed for online 
+querying over a Chord style peer-to-peer overlay network, while our work is focused 
+on offline, batch workloads, and the nodes do not have to be in a P2P network. 
+RankReduce implements LSH using Hadoop MapReduce, the precursor to Apache Spark. 
+However, they do not compare their results to other ANN solutions (only the brute 
+force solution), and also do not evaluate the horizontal scalability of their 
+approach. Furthermore, Stupar et al. stated that ``we did not have a real compute 
+cluster at hand for running the experiments, we simulate the execution in a large 
+cluster by running the mappers and reducers sequentially on our small machine." In 
+this work we compare our results to another ANN method, spill tree, on common 
+datasets for ANN not evaluated by these related works and evaluate it 
+on a real cluster deployed on Microsoft Azure.
+
 
 \section{Methodology}
 
@@ -193,15 +248,15 @@ Here's a typical figure reference.  The figure is centered at the
 top of the column.  It's scaled.  It's explicitly placed.  You'll
 have to tweak the numbers to get what you want.\\
 
-% you can also use the wonderful epsfig package...
-\begin{figure}[t]
-\begin{center}
-\begin{picture}(300,150)(0,200)
-\put(-15,-30){\special{psfile = fig1.ps hscale = 50 vscale = 50}}
-\end{picture}\\
-\end{center}
-\caption{Wonderful Flowchart}
-\end{figure}
+%% you can also use the wonderful epsfig package...
+%\begin{figure}[t]
+%\begin{center}
+%\begin{picture}(300,150)(0,200)
+%\put(-15,-30){\special{psfile = fig1.ps hscale = 50 vscale = 50}}
+%\end{picture}\\
+%\end{center}
+%\caption{Wonderful Flowchart}
+%\end{figure}
 
 This text came after the figure, so we'll casually refer to Figure 1
 as we go on our merry way.
