@@ -1,8 +1,14 @@
+*.DS_STORE
 *.swp
 .idea/
 target/
+metastore_db/
 data/mnist
 data/mnist.t
+data/mnist.bz2
+data/mnist.t.bz2
+data/SVHN.bz2
+data/SVHN.t.bz2
 
 *.aux
 *.ent
