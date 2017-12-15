@@ -70,6 +70,7 @@ object PairwiseNaive {
     val spark = SparkSession
       .builder()
       .appName("Naive All Pairs Implementation")
+      .config("spark.driver.maxResultSize", 0)
       .getOrCreate()
 
     import spark.implicits._
