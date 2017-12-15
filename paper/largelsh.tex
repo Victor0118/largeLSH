@@ -260,12 +260,15 @@ Locality-sensitive hashing (abbreviated LSH) is a method often used for answerin
 		\item if $d(v, q)>r_2$, then $Pr_H[h(v)=h(q)]\leq p_2$		
 	\end{itemize}
 \end{definition}
-Originally, LSH embeds data space into the Hamming space. I
+From the definition we can see that the closer the points in the high dimensional space, the more possible the points are projected into the same hash bucket. 
+Originally, LSH was designed to project data space into the Hamming space as follows:
 
 \begin{align*}
 g(v) &= h_{a_1, a_2, ..., a_K}(v)  \\
 &= [\sign{(a_1\cdot v )}, \sign{(a_1\cdot v )}, ..., \sign{(a_K\cdot v )}]
 \end{align*}
+
+where $a_i (i=1,..,K)$ is a random vector with the same length with $v$. By increasing the number of hash functions $g(\cdot)$, we can increase the possibility of collision for points close to each other in original data space. 
 
 \subsubsection{Random Projection into  Euclidean Space}
 
@@ -339,7 +342,7 @@ The psudocode of our distributed KNN algorithm implementation can be viewed in \
 	generate ID column for $H$ and $Q$ \\
 	results $\leftarrow$ H.approxSimilarityJoin(Q)  \tcp*[f]{search the hash table and union the results through a map-reduce way} \\
 	resultsThres $\leftarrow$ filter(results, $d$) \tcp*[f]{get rid of candidates far from the query points}\\
-	resultsSelected $\leftarrow$ \texttt{SELECT trainID, testID, distance FROM results\_thres} \\
+	resultsSelected $\leftarrow$ \texttt{SELECT trainID, testID, distance FROM resultsThres} \\
 	resultsPartitioned $\leftarrow$  findTopkByPartition(resultsSelected, $k$) \\
 	$L$ $\leftarrow$ resultsPartitioned.map(groundtruthVector Intersect predictionVector)
 	

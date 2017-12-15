@@ -5,14 +5,13 @@ import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.{row_number, _}
 import org.apache.spark.ml.feature.VectorAssembler
-import org.apache.spark.ml.linalg.DenseVector
 import org.rogach.scallop._
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.functions.{array, collect_list}
 import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.types.IntegerType
 
-import scala.collection.mutable.WrappedArray
+import scala.collection.mutable
 
 class SparkLSHSiftConf(arguments: Seq[String]) extends ScallopConf(arguments) {
   val bl = opt[Double](default = Some(2.0), descr = "Bucket length")
@@ -30,9 +29,9 @@ object SparkLSHSift {
   def main(args: Array[String]) {
     val conf = new SparkLSHConf(args)
     val spark: SparkSession = SparkSession.builder().appName("LargeLSH").getOrCreate()
-    spark.sparkContext.setLogLevel("INFO")
     import spark.implicits._
 
+    spark.sparkContext.setLogLevel("INFO")
     var df = spark.read.option("header", "true").option("inferSchema", "true").csv("data/sift/query.csv")
     var assembler = new VectorAssembler().setInputCols(df.columns).setOutputCol("features")
     val query = assembler.transform(df).select("features")
@@ -44,8 +43,6 @@ object SparkLSHSift {
         case other => df(other).cast(IntegerType)
       }: _*
     )
-
-//    assembler = new VectorAssembler().setInputCols(df.columns).setOutputCol("features")
     val groundtruth = df2.withColumn("features", array(df.columns.head, df.columns.tail: _*)).select("features")
 
     //    monotonically_increasing_id is not stable
@@ -77,14 +74,13 @@ object SparkLSHSift {
     val nhtSpace = if (searchMode) Seq(3, 5, 7) else Seq(conf.nht())
     val kSpace = if (searchMode) Seq(1, 5, 9) else Seq(conf.k())
 
-
     for (bl <- blSpace) {
       for (nht <- nhtSpace) {
         Utils.time {
           println("==========transform training data==========")
           brp = new BucketedRandomProjectionLSH().setBucketLength(bl).setNumHashTables(nht).setInputCol("features").setOutputCol("hashes")
           model = brp.fit(base)
-          transformedA = model.transform(base)
+          transformedA = model.transform(base_id)
         }
         for (k <- kSpace) {
           Utils.time {
@@ -105,7 +101,7 @@ object SparkLSHSift {
 
             val pre_gt = prediction.join(groundtruth_id, "testID")
             val res = pre_gt.map{
-              case Row(testID: Int, pred: Array[Int], gts: Array[Int]) =>
+              case Row(testID: Int, pred: collection.mutable.WrappedArray[Int], gts: collection.mutable.WrappedArray[Int]) =>
                 (gts intersect pred).size
             }.reduce(_+_)
 
