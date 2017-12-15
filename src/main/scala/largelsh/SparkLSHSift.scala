@@ -105,7 +105,7 @@ object SparkLSHSift {
 
             val pre_gt = prediction.join(groundtruth_id, "testID")
             val res = pre_gt.map{
-              case Row(testID: Int, pred: Array[Int], gts: Array[Int]) =>
+              case Row(testID: Int, pred: collection.mutable.WrappedArray[Int], gts: collection.mutable.WrappedArray[Int]) =>
                 (gts intersect pred).size
             }.reduce(_+_)
 
