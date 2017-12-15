@@ -377,19 +377,39 @@ SVHN\footnote{\url{http://ufldl.stanford.edu/housenumbers/}} is a real-world ima
 \subsubsection{Image Classification}
 \subsection{Parameters}
 \subsubsection{Hardware Configuration}
-We use ..
+
+We use Microsoft Azure HDInsight to create Spark clusters to run our 
+experiment. For the horizontal scalability experiment we use a cluster consisting 
+of two A3 head nodes with 4 cores, 7 GB RAM, and 285 GB of disk space per node and 
+two A4 worker nodes with 8 cores, 14 GB RAM, and 605 GB of disk space per node. The 
+A-series nodes are general purpose nodes. Each A3 node costs \$0.39/hour while each 
+A4 node costs \$0.779/hour. \\
+
+For running the SVHN and SIFT dataset experiments, we opted for a more powerful 
+cluster powered by two D12 v2 head nodes with 4 cores, 28 GB RAM, and 200 GB of 
+disk space per node and two two D13 v2 worker nodes with 8 cores, 56 GB RAM, and 
+400 GB of disk space per node. The Dv2-series nodes are optimized nodes with the 
+latest generation of CPUs. Each D12 v2 node costs \$0.925/hour while each D13 v2 
+node costs \$1.664/hour. \\
+
+For each particular experiment we vary number of executors, cores per executor, and 
+memory per executor used by Spark. We indicate those in the relevant section.
 
 \subsubsection{Parameters for LSH}
 \subsubsection{Parameters for ANN-based Classification}
 
 \section{Results}
 
+First we summarize the results of our horizontal scalability test.
+
 \section{Summary}
 
 
 \section{Conclusion}
 
-
+We thank Professor Samer Al-Kiswany for helpful discussions regarding the direction 
+of the project. We thank Microsoft for graciously providing Azure credits for 
+Zhucheng Tu to use for his courses.
 {\footnotesize \bibliographystyle{acm}
 \bibliography{bibliography.bib}}
 
