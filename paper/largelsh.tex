@@ -275,7 +275,7 @@ g(v) &= h_{a_1, a_2, ..., a_K}(v)  \\
 &= [\sign{(a_1\cdot v )}, \sign{(a_1\cdot v )}, ..., \sign{(a_K\cdot v )}]
 \end{align*}
 
-where $a_i (i=1,..,K)$ is a random vector with the same length with $v$. By increasing the number of hash functions $g(\cdot)$, we can increase the possibility of collision for points close to each other in original data space. 
+where $a_i (i=1,..,K)$ is a random vector with the same length with $v$. Considering the hamming distance\cite{hamming1950error}, hash values $g(v)$ each buckets should be the same, which means all the binary unit $\sign{(a_1\cdot v )}$ should be the same. By increasing the number of hash functions $g(\cdot)$, we can increase the possibility of collision for points close to each other in original data space. 
 
 \subsubsection{Random Projection into  Euclidean Space}
 
@@ -292,7 +292,7 @@ According to \cite{zolotarev1986one}, stable distribution exist for any $p \in (
 
 First, we projects to a value on the real line. Next, we split line into equal-width segments of size r for buckets. Then we project the data point on the line. It is not hard to understand that the closer two points in the data space, the higher the probability that they project to the same segment. Through the discussion of p-stable distribution above, we know dot product can approximate the length of $\Vert v\Vert_p$. So the dot product keeps the property to hash into the same locality sensitivity.
 
-The paper \cite{datar2004locality} proposes a hash function set:
+The paper \cite{datar2004locality} proposes a hash function set that matches the criteria mentioned above:
 
 
 
@@ -303,7 +303,33 @@ g(v) = h_{a,b,w}(v) = \floor{\frac{(a\cdot v + b)}{w} }
 where $b \in (0, w)$ is a random number and $w$ is the length of line segment, or bucket length.
 
 \subsubsection{LSH algorithm for k-Nearest Neighbor search for Classification}
-The psudocode of applying distributed KNN algorithm to classification tasks can be viewed in \ref{classification}.
+For classification task, in order to ensure we get a high recall, 
+that means, we wish to get as much true neighbors while allowing 
+some less accurate points in the target bucket, we usually define 
+$M$ different hash function $g(\cdot)$ and projects the training 
+data to $M$ hash tables following:
+
+\begin{align*}
+g(v) = \left\{g_1(v), g_2(v), ..., g_M(v)\right\}
+\end{align*}
+
+In the query stage, we union the results 
+collected from different hash tables. The overall data processing 
+pipeline of our implementation can be viewed in graph \ref{classification}.
+
+
+\begin{figure}[t]
+	\center
+	\includegraphics[width=8cm]{graph.png}`
+	\vspace{-0.5cm}
+	\caption{data processing pipeline of LSH}
+	\label{figure:model-architecture}
+	\vspace{-0.5cm}
+\end{figure}
+
+The psudocode of applying LSH-based KNN algorithm
+for classification tasks can be viewed in \ref{classification}, which is widely applied in various areas: image recognition\cite{lee1991handwritten}, text classification\cite{tan2006effective}, intrusion detection\cite{liao2002use}, missing value estimation\cite{acuna2004treatment},  etc. 
+
 
 \begin{algorithm}
 	\SetKwInOut{Input}{Input}
@@ -335,10 +361,17 @@ The psudocode of applying distributed KNN algorithm to classification tasks can 
 	\caption{LSH-based Approximate k-Nearest Neighbor Search Algorithm}
 	\label{classification}
 \end{algorithm}
+
 \subsection{Distributed LSH through Spark}
+Note there are two points to optimize in the pipeline: batch-query 
+and distributed hashing. First, each query is independent with others
+so it is reasonable and practicable to compute them in a map-reduce way. 
+Second, each hashing function is independently defined by randomly 
+sampling $a, b$ and $w$, so we can apply the spark framework to 
+parallel the iterative computation.
 
 The psudocode of our distributed KNN algorithm implementation can be viewed in \ref{knn}.
-
+Note two for-loops in the conventional version are fully adapted in the Apache Spark version. We will show this bring great value to the system especially when the data size, data dimension and 
 
 \begin{algorithm}
 	\SetKwInOut{Input}{Input}
@@ -359,18 +392,15 @@ The psudocode of our distributed KNN algorithm implementation can be viewed in \
 	\label{knn}
 \end{algorithm}
 
-\section{Design}
-
 \section{Experimental Setup}
-
-
 
 \subsection{Data}
 \subsubsection{MNIST}
-The MNIST database\footnote{\url{http://yann.lecun.com/exdb/mnist/}} of handwritten digits, available from this page, has a training set of 60,000 examples, and a test set of 10,000 examples. It is a subset of a larger set available from NIST. 
+The MNIST database\footnote{\url{http://yann.lecun.com/exdb/mnist/}} of handwritten digits has a training set of 60,000 examples, and a test set of 10,000 examples, which is a subset of a larger set available from NIST. Each image is in the shape of $28 \times 28$ so the whole training and testing sets are in shape $60,000 \times 784$ and $10,000 \times 784$. The labels values are 0 to 9.
+Many work has been tested with this training set and test set.
 
 \subsubsection{SVHN}
-SVHN\footnote{\url{http://ufldl.stanford.edu/housenumbers/}} is a real-world image dataset for developing machine learning and object recognition algorithms with minimal requirement on data preprocessing and formatting. It can be seen as similar in flavor to MNIST (e.g., the images are of small cropped digits), but incorporates an order of magnitude more labeled data (over 600,000 digit images) and comes from a significantly harder, unsolved, real world problem (recognizing digits and numbers in natural scene images). 
+SVHN\footnote{\url{http://ufldl.stanford.edu/housenumbers/}} is a real-world image dataset for developing machine learning algorithms with minimal requirement on data preprocessing and formatting. It can be seen as similar in flavor to MNIST (e.g., the images are of small cropped digits), but incorporates an order of magnitude more labeled data (over 600,000 digit images) and comes from a significantly harder, unsolved, real world problem (recognizing digits and numbers in natural scene images). 
 
 \subsubsection{SIFT}
 \cite{jegou2011product}
