@@ -395,8 +395,8 @@ Regardless of which level of view we take, we observe that since the computation
 each input examples is independent of each other, they can be computed in parallel instead of in a 
 serial manner. \\
 
-The psudocode of our distributed KNN algorithm implementation can be viewed in Algorithm~\ref{knn}. In the line 3, instead of iteratively going through each query, the batch-query is run on each cluster through the allocation of Apache Spark, which largely takes advantage of node number. 
-In the line 7, $findTopkByPartition()$ is a function transform the pair-wise similarity table to query-wise ranked table by similarity. Apache Spark implements the per-query ranking job in a MapReduce style. 
+The psudocode of our distributed KNN algorithm implementation can be viewed in Algorithm~\ref{knn}. In the line 3, instead of iteratively going through each query, the batch-query is run on each cluster through the allocation of Apache Spark, which largely takes advantage of multiple node resource and avoid single node computing bottleneck. 
+In the line 6, $findTopkByPartition()$ is a function transform the pair-wise similarity table to query-wise ranked table by similarity. Apache Spark also implements the per-query ranking job in a MapReduce style. 
  
 The full Scala implementation can be 
 found in texttt{SparkLSH.scala} in the source code. \\
@@ -416,7 +416,6 @@ found in texttt{SparkLSH.scala} in the source code. \\
 	$L$ $\leftarrow$ resultsPartitioned.map(groundtruthVector Intersect predictionVector)
 	
 	return $L$\;
-
 	\caption{Distributed LSH}
 	\label{knn}
 \end{algorithm}
@@ -456,18 +455,18 @@ together all the points in the training set that get hashed to the same buckets.
 points (k nearest neighbours) and return the most frequent label out of these labels in the nearest 
 neighbours.
 
+All of our code and result detail are publicly available in the Github\footnote{\url{https://github.com/Victor0118/largeLSH}}.  
+
 \section{Experimental Setup}
 
 In this section we describe the dataset, hardware, and parameters we used for our model performance 
 and horizontal scalability experiments.
 
 \subsection{Data}
-\subsubsection{MNIST}
 The MNIST database\footnote{\url{http://yann.lecun.com/exdb/mnist/}}\cite{lecun1998gradient} of handwritten digits has a training set of 60,000 examples, and a test set of 10,000 examples, which is a subset of a larger set available from NIST. Each image is in the shape of 28-by-28 so the whole training and testing sets are in shape $60,000 \times 784$ and $10,000 \times 784$. For the convenience of the spark data reading API, we download the MNIST data of libsvm format from \url{https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/multiclass.html}.
 Many works have been tested with this training set and test 
 set\cite{lecun1998gradient,ciresan2011flexible,jarrett2009best}.
 
-\subsubsection{SVHN}
 SVHN\footnote{\url{http://ufldl.stanford.edu/housenumbers/}}\cite{netzer2011reading} is a real-world color image dataset obtained from house numbers in Google
 Street View images. It can be seen as similar in flavor to MNIST (e.g., the images are of small cropped 32-by-32 digits), but incorporates an order of magnitude more labeled data (73,257 digit images for training and 26032 digits images for testing) and comes from a significantly harder, unsolved, real world problem (recognizing digits and numbers in natural scene images). 
 
