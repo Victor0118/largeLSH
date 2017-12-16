@@ -19,7 +19,6 @@ class SparkLSHConf(arguments: Seq[String]) extends ScallopConf(arguments) {
   verify()
 }
 
-
 object SparkLSH {
 
   def main(args: Array[String]) {
