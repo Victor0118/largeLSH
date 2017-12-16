@@ -93,7 +93,11 @@ features for their business entities, and it is not reasonable to assume all the
 data are stored on the same machine. We explore the problem of approximate nearest 
 neighbour search in a distributed setting, specifically looking at the 
 effectiveness of locality sensitive hashing (LSH) for this problem on high 
-dimensional data. We find that \red{ipsum...}
+dimensional data and compare it against an open-source distributed spill tree implementation tackling 
+similar problems. In our experiments on the particular datasets we used we find that spill trees 
+outperform LSH in both in terms of accuracy and run time. Both of them can horizontally scale. 
+However, the simplicity of LSH compared to spill trees and the flexibility of spill trees make it an 
+attrative baseline.
 
 
 \section{Introduction}
