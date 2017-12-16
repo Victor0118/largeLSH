@@ -395,9 +395,11 @@ Regardless of which level of view we take, we observe that since the computation
 each input examples is independent of each other, they can be computed in parallel instead of in a 
 serial manner. \\
 
-The psudocode of our distributed KNN algorithm implementation can be viewed in Algorithm~\ref{knn}. 
-\red{Talk about findTopKByPartition, resultsPartitioned, etc.}. The full Scala implementation can be 
-found in texttt{SparkLSH.scala} included with the code. \\
+The psudocode of our distributed KNN algorithm implementation can be viewed in Algorithm~\ref{knn}. In the line 3, instead of iteratively going through each query, the batch-query is run on each cluster through the allocation of Apache Spark, which largely takes advantage of node number. 
+In the line 7, $findTopkByPartition()$ is a function transform the pair-wise similarity table to query-wise ranked table by similarity. Apache Spark implements the per-query ranking job in a MapReduce style. 
+ 
+The full Scala implementation can be 
+found in texttt{SparkLSH.scala} in the source code. \\
 
 \begin{algorithm}[h]
 	\SetKwInOut{Input}{Input}
@@ -407,7 +409,7 @@ found in texttt{SparkLSH.scala} included with the code. \\
 	\Output{Prediction List of labels $L$}
 	generate ID column for $H$ and $Q$ \\
 	results $\leftarrow$ H.approxSimilarityJoin(Q)  \tcp*[f]{search the hash table and union the results 
-	in map-reduce fashion} \\
+	in MapReduce fashion} \\
 	resultsThres $\leftarrow$ filter(results, $d$) \tcp*[f]{get rid of candidates far from the query points}\\
 	resultsSelected $\leftarrow$ \texttt{SELECT trainID, testID, distance FROM resultsThres} \\
 	resultsPartitioned $\leftarrow$  findTopkByPartition(resultsSelected, $k$) \\
@@ -553,7 +555,6 @@ spill tree implementation of KNN also noticed similar horizontal scalability pat
 \section{Summary}
 
 
-\section{Conclusion}
 
 \section*{Acknowledgement}
 We thank Professor Samer Al-Kiswany for helpful discussions regarding the direction 
