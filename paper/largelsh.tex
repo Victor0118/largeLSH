@@ -459,7 +459,8 @@ neighbours.
 \subsection{Data}
 \subsubsection{MNIST}
 The MNIST database\footnote{\url{http://yann.lecun.com/exdb/mnist/}}\cite{lecun1998gradient} of handwritten digits has a training set of 60,000 examples, and a test set of 10,000 examples, which is a subset of a larger set available from NIST. Each image is in the shape of 28-by-28 so the whole training and testing sets are in shape $60,000 \times 784$ and $10,000 \times 784$. For the convenience of the spark data reading API, we download the MNIST data of libsvm format from \url{https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/multiclass.html}.
-Many work has been tested with this training set and test set\cite{lecun1998gradient,ciresan2011flexible,jarrett2009best}.
+Many works have been tested with this training set and test 
+set\cite{lecun1998gradient,ciresan2011flexible,jarrett2009best}.
 
 \subsubsection{SVHN}
 SVHN\footnote{\url{http://ufldl.stanford.edu/housenumbers/}}\cite{netzer2011reading} is a real-world color image dataset obtained from house numbers in Google
@@ -477,7 +478,7 @@ A-series nodes are general purpose nodes.  \\
 For running the SVHN and SIFT dataset experiments, we opted for a more powerful 
 cluster powered by two D12 v2 head nodes with 4 cores, 28 GB RAM, and 200 GB of 
 disk space per node and two two D13 v2 worker nodes with 8 cores, 56 GB RAM, and 
-400 GB of disk space per node. 
+400 GB of disk space per node. \\
 
 For each particular experiment we vary number of executors, cores per executor, and 
 memory per executor used by Spark. We indicate those in the relevant section.
@@ -495,7 +496,39 @@ All parameters in our distributed LSH algorithm can be found in the following li
 
 \section{Results}
 
-First we summarize the results of our horizontal scalability test.
+First we summarize the results of parameter tuning in Figure~\ref{figure:scalability}. Each 
+point is labelled by a 3-tuple indicating the bucket length, number of hash tables, and number of 
+nearest neighbours (k) out of which to take the most frequent label.
+
+\begin{figure}[t]
+	\center
+	\includegraphics[width=9cm]{horiz-scalability.png}
+	\caption{Illustration of retrieving top k candidates for a query using LSH on the MNIST dataset}
+	\label{figure:scalability}
+\end{figure}
+
+We observe that as the bucket length increases, the running time of predicting the labels of the query 
+set also increases, but we get a boost in accuracy, although it gradually levels off. This is expected 
+since increasing bucket length decreases the likelihood that two non-similar points will get mapped to 
+the same hash value. We also observe that as the number of hash tables increases, the running time 
+increases and the accuracy increases as well. This is expected since more hash tables can cover 
+neighbours that are potentially missed by other hash tables. The best accuracy we can get with our 
+approach using the parameters we tried was 94.99\% using a bucket length of 8, 5 hash tables, and 
+1-NN. 
+Note that more neighbours doesn't necessarily imply more accurate results. On the SVHN data we can 
+only get an accuracy of 21.76\%. We expect to get better results with more parameter tuning. \\
+
+We also ran the spill tree implementation mentioned earlier for approximate nearest neighbours and got 
+96.99\% as our best accuracy on the MNIST dataset and 47.22\% on the SVHN dataset. We observe 
+that the spill tree implementation yields superior accuracy and also lower running times than LSH. Spill 
+trees do not require much parameter tuning and the model is quite robust (similar performance for 
+different values of k), where as for LSH parameter tuning is required to get accurate results, although 
+it can be argued that it gives us more flexible since we can choose the tradeoff between running time 
+and accuracy. \\
+
+Next, we investigate the horizontal scalability of LSH by checking its runtime as the number of cores 
+vary, which is a function of the number of executors and cores per executor.
+
 
 \section{Summary}
 
