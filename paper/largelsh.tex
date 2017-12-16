@@ -29,6 +29,7 @@
 \usepackage{url}
 \usepackage{listings}
 \usepackage[linesnumbered,ruled]{algorithm2e}
+\usepackage{float}
 
 %\usepackage{algorithm}
 \usepackage[noend]{algpseudocode}
@@ -256,7 +257,12 @@ on a real cluster deployed on Microsoft Azure.
 
 
 \subsection{Locality Sensitive Hashing}
-Locality-sensitive hashing (abbreviated LSH) is a method often used for answering approximate nearest neighbour queries in high-dimensional data sets. According to varity of the hash function design, LSH has many implementation. One of the most popular approach is random projection(RP). The basic idea of RP is to reduce the dimensionality of a set of points which lie in Euclidean space and enlarge the probability of the closer points appearing in the same buckets during the projection process. Many approaches to implement this goal are detailed in \cite{wang2014hashing}.
+Locality-sensitive hashing (abbreviated LSH) is a method often used for answering approximate 
+nearest neighbour queries in high-dimensional data sets. According to varity of the hash function 
+design, LSH has many implementation. One of the most popular approach is random projection(RP). 
+The basic idea of RP is to reduce the dimensionality of a set of points which lie in Euclidean space and 
+enlarge the probability of the closer points appearing in the same buckets during the projection 
+process. Many approaches to implement this goal are detailed in \cite{wang2014hashing}.
 
 
 \subsubsection{Random Projection into Hamming  Space}
@@ -268,7 +274,9 @@ Locality-sensitive hashing (abbreviated LSH) is a method often used for answerin
 	\end{itemize}
 \end{definition}
 
-From the definition we can see that the closer the points in the high dimensional space, the more possible the points are projected into the same hash bucket. 
+From the definition we can see that the closer the points in the high dimensional space, the more 
+probable the points are projected into the same hash bucket. 
+
 Originally, LSH was designed to project data space into the Hamming space as follows:
 
 \begin{align*}
@@ -276,7 +284,16 @@ g(v) &= h_{a_1, a_2, ..., a_K}(v)  \\
 &= [\sign{(a_1\cdot v )}, \sign{(a_1\cdot v )}, ..., \sign{(a_K\cdot v )}]
 \end{align*}
 
-where $a_i (i=1,..,K)$ is a random vector with the same length with $v$. Considering the hamming distance\cite{hamming1950error}, hash values $g(v)$ each buckets should be the same, which means all the binary unit $\sign{(a_1\cdot v )}$ should be the same. By increasing the number of hash functions $g(\cdot)$, we can increase the possibility of collision for points close to each other in original data space. 
+where $a_i, 1 \leq i \leq K$ is a random vector with the same length as $v$. Considering the hamming 
+distance \cite{hamming1950error}, hash values $g(v)$ in each buckets should be the same, which 
+means all the binary unit $\sign{(a_1\cdot v )}$ should be the same.  By increasing $K$, we decrease 
+the false positive rate, since two dissimilar could happen to have the same hash values for a set of 
+random vectors, but if we increase the number of random vectors, the increased discernibility 
+decreases this likelihood. By increasing the number of hash functions $g(\cdot)$, we can increase the 
+possibility of collision for points close to each other in original data space, thus decreasing the false 
+negative rate. Under a set of random vectors, it is possible two points cannot be mapped to the same 
+hash values - but the likehood they get mapped to the same hash values when we increase the number 
+of sets of random vector increases.
 
 \subsubsection{Random Projection into  Euclidean Space}
 
@@ -291,9 +308,14 @@ According to \cite{zolotarev1986one}, stable distribution exist for any $p \in (
 	\item a Gaussian (normal) distribution with density function $g(x) = \frac{1}{\sqrt{2\pi}}e^{-x^2/2}$, is 2-stable
 \end{itemize}
 
-First, we projects to a value on the real line. Next, we split line into equal-width segments of size r for buckets. Then we project the data point on the line. It is not hard to understand that the closer two points in the data space, the higher the probability that they project to the same segment. Through the discussion of p-stable distribution above, we know dot product can approximate the length of $\Vert v\Vert_p$. So the dot product keeps the property to hash into the same locality sensitivity.
+First, we projects to a value on the real line. Next, we split line into equal-width segments of size r for 
+buckets. Then we project the data point on the line. It is not hard to understand that the closer two 
+points in the data space, the higher the probability that they project to the same segment. Through the 
+discussion of p-stable distribution above, we know dot product can approximate the length of $\Vert 
+v\Vert_p$. So the dot product keeps the property to hash into the same ``locality".
 
-The paper \cite{datar2004locality} proposes a hash function set that matches the criteria mentioned above:
+Datar et al. \cite{datar2004locality} proposes a hash function set that matches the criteria mentioned 
+above:
 
 \begin{align*}
 g(v) = h_{a,b,w}(v) = \floor{\frac{(a\cdot v + b)}{w} }
@@ -313,22 +335,22 @@ g(v) = \left\{g_1(v), g_2(v), ..., g_M(v)\right\}
 \end{align*}
 
 In the query stage, we union the results 
-collected from different hash tables. The overall data processing 
-pipeline of our implementation can be viewed in graph \ref{classification}.
-
+collected from different hash tables. An illustration is shown in Figure~\ref{figure:topk-illustration}.
 
 \begin{figure}[t]
 	\center
 	\includegraphics[width=8cm]{graph.png}`
 	\vspace{-0.5cm}
-	\caption{data processing pipeline of LSH}
-	\label{figure:model-architecture}
-	\vspace{-0.5cm}
+	\caption{Illustration of retrieving top k candidates for a query using LSH}
+	\label{figure:topk-illustration}
+	\vspace{-1cm}
 \end{figure}
 
 The psudocode of applying LSH-based KNN algorithm
-for classification tasks can be viewed in \ref{classification}, which is widely applied in various areas: image recognition\cite{lee1991handwritten}, text classification\cite{tan2006effective}, intrusion detection\cite{liao2002use}, missing value estimation\cite{acuna2004treatment},  etc. 
-
+for classification tasks can be viewed in Algorithm~\ref{algo:classification}, which is widely applied in 
+various areas: 
+image recognition \cite{lee1991handwritten}, text classification \cite{tan2006effective}, intrusion 
+detection \cite{liao2002use}, missing value estimation \cite{acuna2004treatment},  etc. 
 
 \begin{algorithm}[h]
 	\SetKwInOut{Input}{Input}
@@ -352,25 +374,30 @@ for classification tasks can be viewed in \ref{classification}, which is widely 
 			c
 		}
 		{
-			$L.insert(lable_{random})$
+			$L.insert(label_{random})$
 		}
 	}
 	return $L$\;
 		
 	\caption{LSH-based Approximate k-Nearest Neighbor Search Algorithm}
-	\label{classification}
+	\label{algo:classification}
 \end{algorithm}
 
 \subsection{Distributed LSH through Spark}
-Note there are two points to optimize in the pipeline: batch-query 
-and distributed hashing. First, each query is independent with others
-so it is reasonable and practicable to compute them in a map-reduce way. 
-Second, each hashing function is independently defined by randomly 
-sampling $a, b$ and $w$, so we can apply the spark framework to 
-parallel the iterative computation.
 
-The psudocode of our distributed KNN algorithm implementation can be viewed in \ref{knn}.
-Note two for-loops in the conventional version are fully adapted in the Apache Spark version. We will show this bring great value to the system especially when the data size, data dimension and 
+In this section we will present several variations of how to implement distributed LSH using Spark. The 
+first is a high level implementation but using Spark SQL. The second is a high level implementation that 
+uses APIs that were very recently introduced in Spark 2.1 (December 2016). The 
+third is a low level sketch of how to implement it using fundamental MapReduce operations using 
+Resilient Distributed Datasets (RDDs), which is how one would go about it in Spark 1.x. \\
+
+Regardless of which level of view we take, we observe that since the computation of hash functions for 
+each input examples is independent of each other, they can be computed in parallel instead of in a 
+serial manner. \\
+
+The psudocode of our distributed KNN algorithm implementation can be viewed in Algorithm~\ref{knn}. 
+\red{Talk about findTopKByPartition, resultsPartitioned, etc.}. The full Scala implementation can be 
+found in texttt{SparkLSH.scala} included with the code. \\
 
 \begin{algorithm}[h]
 	\SetKwInOut{Input}{Input}
@@ -379,7 +406,8 @@ Note two for-loops in the conventional version are fully adapted in the Apache S
 	\Input{Hash Table $H$, Query Data Set $Q$, Neighbor Number $k$, and distance threshold $d$}
 	\Output{Prediction List of labels $L$}
 	generate ID column for $H$ and $Q$ \\
-	results $\leftarrow$ H.approxSimilarityJoin(Q)  \tcp*[f]{search the hash table and union the results through a map-reduce way} \\
+	results $\leftarrow$ H.approxSimilarityJoin(Q)  \tcp*[f]{search the hash table and union the results 
+	in map-reduce fashion} \\
 	resultsThres $\leftarrow$ filter(results, $d$) \tcp*[f]{get rid of candidates far from the query points}\\
 	resultsSelected $\leftarrow$ \texttt{SELECT trainID, testID, distance FROM resultsThres} \\
 	resultsPartitioned $\leftarrow$  findTopkByPartition(resultsSelected, $k$) \\
@@ -390,6 +418,55 @@ Note two for-loops in the conventional version are fully adapted in the Apache S
 	\caption{Distributed LSH}
 	\label{knn}
 \end{algorithm}
+
+As of December of last year, a new API was released to Spark that allows us to find approximate KNN 
+at a higher level. The steps until and including step 3 in Algorithm~\ref{knn} are the same. However, 
+after step 3, we can do the following instead, shown in pseudo-Scala code. Essentially, we can map 
+each query example to a predicted class by calling a function called \texttt{approxNearestNeighbors} 
+that is directly implemented in Spark. This function returns the k nearest neighbours based on the 
+hash values of the query example's feature vector. We get the most frequent label out of the k nearest 
+neighbours. However, there are some special considerations that need to be 
+taken into account despite this simple-looking API. Since Spark does not allow nested distributed 
+operations, the outer query set Q cannot be a RDD or DataFrame. Instead, we collect the query points 
+in groups to the Spark cluster driver (instead of the whole set to avoid OutOfMemory errors), and do a 
+Scala parallel map over the query set groups to take advantage the parallel collections built-in to the 
+Scala language despite the fact we cannot use Spark's parallelism. For more details, one can refer to 
+the \texttt{SparkLSHv2.scala} class in the code. \\
+ 
+{\tt \small
+	\begin{verbatim}
+	Q.map(vec => {
+	 // T is the training set
+	 // vec is the feature vector of a query example
+			ann = model.approxNearestNeighbors(T, vec, k)
+			pred = ann.select("label")
+			            .groupBy("label").count
+			            .sort(desc("label")).first
+			return prediction
+	})
+	\end{verbatim}
+}
+
+\begin{figure}[H]
+	\center
+	\includegraphics[width=8cm]{rdd}
+	\caption{Sketch illustration of implementing RP using RDD}
+	\label{figure:rdd}
+\end{figure}
+
+We can also choose to implement LSH using low-level MapReduce and Spark constructs as in 
+Figure~\ref{figure:rdd}. We map each example in to m different key-value pairs, where m is the number 
+of hash tables. Each key-value pair contains the tuple of the signature of one particular hash table's 
+value and the hash table index as key and the label as value. We aggregate them using 
+\texttt{aggregateByKey} to group labels with the same key together. Note this is better than using 
+\texttt{groupByKey} since it avoid cross-partition shuffles and also better than \texttt{reduceByKey} 
+since it avoids creating a list for every key-value pair to facilitate monoid operations, thus cutting down 
+object creation overhead. \\
+
+In the query / prediction phase we hash a query point using the same set of hash tables and union 
+together all the points in the training set that get hashed to the same buckets. We pick the closest 
+points (k nearest neighbours) and return the most frequent label out of these labels in the nearest 
+neighbours.
 
 \section{Experimental Setup}
 
