@@ -360,17 +360,17 @@ detection \cite{liao2002use}, missing value estimation \cite{acuna2004treatment}
 	\Output{Prediction List of labels $L$}
 	$L \leftarrow \infty$
 	
-	\For(\tcp*[f]{for each query sample}){$q=1, 2, \ldots, n$ }{
-		\For(\tcp*[f]{for each hash table}){$i=1, 2, \ldots, m$}{        
-			compute $h_{q, i} = \mathsf{g}_i(Q_q)$ \\
-			find candidates $C_i = findHash(H, h_{q, i})$
+	\For(\tcp*[f]{for each query sample}){$q\leftarrow 1, 2, \ldots, n$ }{
+		\For(\tcp*[f]{for each hash table}){$i\leftarrow 1, 2, \ldots, m$}{        
+			compute $h_{q, i} \leftarrow  \mathsf{g}_i(Q_q)$ \\
+			find candidates $C_i \leftarrow findHash(H, h_{q, i})$
 		}
-		collect candidates C = $\bigcup\limits_{i=1}^{m} C_{i}$ \\
+		collect candidates $C \leftarrow \bigcup\limits_{i=1}^{m} C_{i}$ \\
 
 		\eIf{$length(C)\neq 0$}
 		{
-			find best candidates by some distance matric $C^{\prime} = findTop(C, min(k, length(C)))$ \\
-			get the majority $l_q = \arg \max\limits_{c \in C^{\prime}} freq(label_c)$
+			find best candidates by some distance matric $C^{\prime} \leftarrow findTop(C, min(k, length(C)))$ \\
+			get the majority $l_q \leftarrow \arg \max\limits_{c \in C^{\prime}} freq(label_c)$
 			c
 		}
 		{
@@ -430,22 +430,8 @@ taken into account despite this simple-looking API. Since Spark does not allow n
 operations, the outer query set Q cannot be a RDD or DataFrame. Instead, we collect the query points 
 in groups to the Spark cluster driver (instead of the whole set to avoid OutOfMemory errors), and do a 
 Scala parallel map over the query set groups to take advantage the parallel collections built-in to the 
-Scala language despite the fact we cannot use Spark's parallelism. For more details, one can refer to 
-the \texttt{SparkLSHv2.scala} class in the code. \\
- 
-{\tt \small
-	\begin{verbatim}
-	Q.map(vec => {
-	 // T is the training set
-	 // vec is the feature vector of a query example
-			ann = model.approxNearestNeighbors(T, vec, k)
-			pred = ann.select("label")
-			            .groupBy("label").count
-			            .sort(desc("label")).first
-			return prediction
-	})
-	\end{verbatim}
-}
+Scala language despite the fact we cannot use Spark's parallelism. 
+
 
 \begin{figure}[H]
 	\center
@@ -479,12 +465,6 @@ Many work has been tested with this training set and test set\cite{lecun1998grad
 SVHN\footnote{\url{http://ufldl.stanford.edu/housenumbers/}}\cite{netzer2011reading} is a real-world color image dataset obtained from house numbers in Google
 Street View images. It can be seen as similar in flavor to MNIST (e.g., the images are of small cropped 32-by-32 digits), but incorporates an order of magnitude more labeled data (73,257 digit images for training and 26032 digits images for testing) and comes from a significantly harder, unsolved, real world problem (recognizing digits and numbers in natural scene images). 
 
-\subsubsection{SIFT}
-SIFT1M\footnote{\url{http://corpus-texmex.irisa.fr/}}\cite{jegou2011product} is created to evaluate the quality of approximate nearest neighbors search algorithm and contains the 128-dimensional SIFT descriptor of 1,000,000 base vectors and 10,000 query vectors. 
-
-\subsection{Task}
-\subsubsection{Nearest Neighbor Search}
-\subsubsection{Image Classification}
 \subsection{Parameters}
 \subsubsection{Hardware Configuration}
 
@@ -510,6 +490,7 @@ All parameters in our distributed LSH algorithm can be found in the following li
 	\item Bucket Length ($w$): determines the length of each line segment and is used to control the average size of hash buckets (and thus the number of buckets). The larger the $w$, the more possible to project close points into the same bucket, while a large $w$ also increase false positives points.
 	\item Bias ($b$): controls the center of hash values and always is set to 0 in our experiment.
 	\item Number of Hash Tables ($M$): is also the number of randomly generated lines in data space. Increasing $M$ will help get rid of the randomness effect because of RP. 
+	\item Number of Nearest Neighbor ($k$): is a parameter for classification task if the kNN classifier is applied. We mainly tried $k \in \left\{1, 5, 9\right\}$ in our experiments to show the effect of $k$.
 \end{itemize}
 
 \section{Results}
