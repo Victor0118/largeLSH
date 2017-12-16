@@ -469,7 +469,12 @@ Many works have been tested with this training set and test
 set\cite{lecun1998gradient,ciresan2011flexible,jarrett2009best}.
 
 SVHN\footnote{\url{http://ufldl.stanford.edu/housenumbers/}}\cite{netzer2011reading} is a real-world color image dataset obtained from house numbers in Google
-Street View images. It can be seen as similar in flavor to MNIST (e.g., the images are of small cropped 32-by-32 digits), but incorporates an order of magnitude more labeled data (73,257 digit images for training and 26032 digits images for testing) and comes from a significantly harder, unsolved, real world problem (recognizing digits and numbers in natural scene images). 
+Street View images. It can be seen as similar in flavor to MNIST (e.g., the images are of small cropped 
+32-by-32 digits), but incorporates an order of magnitude more labeled data (73,257 digit images for 
+training and 26032 digits images for testing) and comes from a significantly harder, unsolved, real 
+world problem (recognizing digits and numbers in natural scene images). 
+
+Note both this dataset and MNIST are stored in the Hadoop Distributed File System (HDFS).
 
 \subsection{Parameters}
 \subsubsection{Hardware Configuration}
@@ -484,9 +489,6 @@ For running the SVHN and SIFT dataset experiments, we opted for a more powerful
 cluster powered by two D12 v2 head nodes with 4 cores, 28 GB RAM, and 200 GB of 
 disk space per node and two two D13 v2 worker nodes with 8 cores, 56 GB RAM, and 
 400 GB of disk space per node. \\
-
-For each particular experiment we vary number of executors, cores per executor, and 
-memory per executor used by Spark. We indicate those in the relevant section.
 
 \subsubsection{Parameters in Distributed LSH }
 
@@ -554,7 +556,20 @@ spill tree implementation of KNN also noticed similar horizontal scalability pat
 
 \section{Summary}
 
-
+We explored the effectiveness of locality sensitive hashing using random projections for finding 
+approximate nearest neighbours in high dimensional space and using it to do classification, on 
+potentially large datasets. We find in our experiments that spill trees outperformed LSH in terms of 
+both model performance (accuracy) and run time needed to attain the best accuracy, while at the same 
+time requiring less parameters to tune. Both LSH and spill trees can horizontally scale. To the best of 
+our knowledge, we are not aware of any exiting comparisons between spill trees and LSH for these 
+kinds of tasks using a modern parallel data processing framework. Despite the fact the LSH doesn't 
+perform as well as spill trees, there are still several selling points of LSH. Although having a large 
+number of tunable parameter maybe frustrating, at the same time it offers more flexibility in terms of 
+the accuracy vs. run time tradeoff. If we really needed some predictions with low latency while not 
+caring about accuracy as much LSH gives us that flexibility. Furthermore, LSH is an elegant idea that is 
+much simpler to understand on the conceptual level compared with spill trees and can serve as a good 
+baseline for these kinds of tasks in the future over the brute-force method, which can be infeasible to 
+compute.
 
 \section*{Acknowledgement}
 We thank Professor Samer Al-Kiswany for helpful discussions regarding the direction 
