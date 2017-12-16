@@ -343,7 +343,8 @@ collected from different hash tables. An illustration is shown in Figure~\ref{fi
 	\vspace{-0.5cm}
 	\caption{Illustration of retrieving top k candidates for a query using LSH}
 	\label{figure:topk-illustration}
-	\vspace{-1cm}
+	\vspace{0cm}
+
 \end{figure}
 
 The psudocode of applying LSH-based KNN algorithm
@@ -395,8 +396,8 @@ Regardless of which level of view we take, we observe that since the computation
 each input examples is independent of each other, they can be computed in parallel instead of in a 
 serial manner. \\
 
-The psudocode of our distributed KNN algorithm implementation can be viewed in Algorithm~\ref{knn}. In the line 3, instead of iteratively going through each query, the batch-query is run on each cluster through the allocation of Apache Spark, which largely takes advantage of multiple node resource and avoid single node computing bottleneck. 
-In the line 6, $findTopkByPartition()$ is a function transform the pair-wise similarity table to query-wise ranked table by similarity. Apache Spark also implements the per-query ranking job in a MapReduce style. 
+The psudocode of our distributed KNN algorithm implementation can be viewed in Algorithm~\ref{knn}. In the 3-rd line, instead of iteratively going through each query, the batch-query is run on each cluster through the allocation of Apache Spark, which largely takes advantage of multiple node resource and avoid single node computing bottleneck. Similarly we also apply Apache Spark API on evaluation step in the 7-th line.
+In the 6-th line, $findTopkByPartition()$ is a function transform the pair-wise similarity table to query-wise ranked table by similarity. Apache Spark also implements the per-query ranking job in a MapReduce style. 
  
 The full Scala implementation can be 
 found in texttt{SparkLSH.scala} in the source code. \\
@@ -434,7 +435,7 @@ Scala parallel map over the query set groups to take advantage the parallel coll
 Scala language despite the fact we cannot use Spark's parallelism. 
 
 
-\begin{figure}[H]
+\begin{figure}[t]
 	\center
 	\includegraphics[width=8cm]{rdd}
 	\caption{Sketch illustration of implementing RP using RDD}
