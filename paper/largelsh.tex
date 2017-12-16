@@ -562,14 +562,19 @@ potentially large datasets. We find in our experiments that spill trees outperfo
 both model performance (accuracy) and run time needed to attain the best accuracy, while at the same 
 time requiring less parameters to tune. Both LSH and spill trees can horizontally scale. To the best of 
 our knowledge, we are not aware of any exiting comparisons between spill trees and LSH for these 
-kinds of tasks using a modern parallel data processing framework. Despite the fact the LSH doesn't 
-perform as well as spill trees, there are still several selling points of LSH. Although having a large 
+kinds of tasks using a modern parallel data processing framework. 
+We notice that LSH doesn't 
+perform as well as spill trees in our experiment on SVHN dataset. 
+We argue that it might because there are some parameter tuning and optimization issues with the Apache Spark API. 
+Although having a large 
 number of tunable parameter maybe frustrating, at the same time it offers more flexibility in terms of 
 the accuracy vs. run time tradeoff. If we really needed some predictions with low latency while not 
 caring about accuracy as much LSH gives us that flexibility. Furthermore, LSH is an elegant idea that is 
 much simpler to understand on the conceptual level compared with spill trees and can serve as a good 
 baseline for these kinds of tasks in the future over the brute-force method, which can be infeasible to 
 compute.
+
+In the future, we will try to optimize our implementation to allow it to better cooperate with the MapReduce fashion. Other tasks and better hard-ware computing resource are also worth considering to get a deep understanding on how approximate search works in nature.
 
 \section*{Acknowledgement}
 We thank Professor Samer Al-Kiswany for helpful discussions regarding the direction 
