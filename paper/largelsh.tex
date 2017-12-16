@@ -456,6 +456,9 @@ neighbours.
 
 \section{Experimental Setup}
 
+In this section we describe the dataset, hardware, and parameters we used for our model performance 
+and horizontal scalability experiments.
+
 \subsection{Data}
 \subsubsection{MNIST}
 The MNIST database\footnote{\url{http://yann.lecun.com/exdb/mnist/}}\cite{lecun1998gradient} of handwritten digits has a training set of 60,000 examples, and a test set of 10,000 examples, which is a subset of a larger set available from NIST. Each image is in the shape of 28-by-28 so the whole training and testing sets are in shape $60,000 \times 784$ and $10,000 \times 784$. For the convenience of the spark data reading API, we download the MNIST data of libsvm format from \url{https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/multiclass.html}.
@@ -496,15 +499,15 @@ All parameters in our distributed LSH algorithm can be found in the following li
 
 \section{Results}
 
-First we summarize the results of parameter tuning in Figure~\ref{figure:scalability}. Each 
+First we summarize the results of parameter tuning in Figure~\ref{figure:tuning}. Each 
 point is labelled by a 3-tuple indicating the bucket length, number of hash tables, and number of 
 nearest neighbours (k) out of which to take the most frequent label.
 
 \begin{figure}[t]
 	\center
-	\includegraphics[width=9cm]{horiz-scalability.png}
+	\includegraphics[width=8cm]{param-tuning.png}
 	\caption{Illustration of retrieving top k candidates for a query using LSH on the MNIST dataset}
-	\label{figure:scalability}
+	\label{figure:tuning}
 \end{figure}
 
 We observe that as the bucket length increases, the running time of predicting the labels of the query 
@@ -527,8 +530,25 @@ it can be argued that it gives us more flexible since we can choose the tradeoff
 and accuracy. \\
 
 Next, we investigate the horizontal scalability of LSH by checking its runtime as the number of cores 
-vary, which is a function of the number of executors and cores per executor.
+vary, which is a function of the number of executors and cores per executor, shown in 
+Figure~\ref{figure:scalability}. Whenever a Spark job is submitted, we need to specify the number of 
+executors to use, the number of cores per executor, and the memory allocated per executor. One can 
+think of executors as isolated containers that run a subset of tasks. We observe that as the total 
+number of cores increase, the time it takes for classification decreases, as expected. However, we 
+eventually get diminishing returns. We also note that more executors and fewer cores per executor is 
+better than fewer executors and more core per executor (although data is shared within executor), 
+when the total number of cores is fixed. This is shown by any two points on the same vertical line in 
+Figure~\ref{figure:scalability}. More executors will get more RAM than otherwise, which might be an 
+explanation for this (less contention for memory between cores in same executor). The authors of the 
+spill tree implementation of KNN also noticed similar horizontal scalability patterns.
 
+\begin{figure}[t]
+	\center
+	\includegraphics[width=8cm]{scalability.png}
+	\caption{Horizontal Scalability of Distributed LSH. Each tuple indicates the number of executors and 
+	number of cores per executor respectively.}
+	\label{figure:scalability}
+\end{figure}
 
 \section{Summary}
 
